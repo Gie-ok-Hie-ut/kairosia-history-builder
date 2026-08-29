@@ -11,6 +11,9 @@
   --line-strong: #bdc7cc;
   --accent: #0f766e;
   --accent-soft: #e5f3f1;
+  --bookmark: #c0183f;
+  --bookmark-border: #e2a3b1;
+  --bookmark-soft: #fff0f3;
   --danger: #b42318;
   --warning: #a15c00;
   --shadow: 0 16px 44px rgb(24 33 38 / 14%);
@@ -554,7 +557,7 @@ a:focus-visible {
   border-radius: 4px;
   background: var(--surface);
   padding: 0 7px;
-  color: var(--muted);
+  color: var(--bookmark);
   cursor: pointer;
 }
 
@@ -568,9 +571,9 @@ a:focus-visible {
 
 .bookmark-filter-toggle:hover,
 .bookmark-filter-toggle.is-active {
-  border-color: #d2b66f;
-  background: #fff8e7;
-  color: #8b5a00;
+  border-color: var(--bookmark-border);
+  background: var(--bookmark-soft);
+  color: var(--bookmark);
 }
 
 .year-jump button,
@@ -1095,7 +1098,7 @@ a:focus-visible {
 }
 
 .timeline-card-bookmark-icon {
-  color: #9a6200;
+  color: var(--bookmark);
 }
 
 .timeline-card.has-indicators .timeline-card-year {
@@ -1156,9 +1159,13 @@ a:focus-visible {
 
 .detail-bookmark-trigger:hover,
 .detail-bookmark-trigger.is-active {
-  border-color: #d2b66f;
-  background: #fff8e7;
-  color: #8b5a00;
+  border-color: var(--bookmark-border);
+  background: var(--bookmark-soft);
+  color: var(--bookmark);
+}
+
+.detail-bookmark-trigger {
+  color: var(--bookmark);
 }
 
 .detail-visibility-trigger:hover,
