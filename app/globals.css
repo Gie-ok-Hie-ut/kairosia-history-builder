@@ -58,6 +58,18 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 .history-shell {
   display: flex;
   height: 100vh;
@@ -277,25 +289,74 @@ a:focus-visible {
   scrollbar-width: thin;
 }
 
-.toolbar-track-filters label {
+.track-order-item {
   display: flex;
   height: 30px;
   flex: 0 0 auto;
   align-items: center;
-  gap: 5px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--surface);
+  color: var(--muted);
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.track-order-item:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.track-order-item.is-dragging {
+  z-index: 5;
+  border-color: #7e9fad;
+  box-shadow: 0 4px 12px rgb(24 33 38 / 18%);
+}
+
+.track-order-item label {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  gap: 5px;
   cursor: pointer;
   padding: 0 7px 0 5px;
-  color: var(--muted);
   font-size: 10px;
   font-weight: 650;
 }
 
-.toolbar-track-filters label:hover {
-  border-color: var(--line-strong);
+.track-drag-handle {
+  display: grid;
+  width: 20px;
+  height: 28px;
+  flex: 0 0 20px;
+  place-items: center;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 3px 0 0 3px;
+  background: var(--surface-muted);
+  color: var(--faint);
+  cursor: grab;
+  touch-action: none;
+}
+
+.track-drag-handle:hover:not(:disabled),
+.track-drag-handle:focus-visible {
+  background: #edf2f4;
   color: var(--ink);
+}
+
+.track-drag-handle:active:not(:disabled) {
+  cursor: grabbing;
+}
+
+.track-drag-handle:disabled {
+  cursor: wait;
+  opacity: 0.48;
+}
+
+.track-order-item.has-order-error .track-drag-handle {
+  color: var(--danger);
 }
 
 .toolbar-track-filters input {

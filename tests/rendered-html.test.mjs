@@ -130,17 +130,23 @@ test("keeps domain and Notion concerns outside the page component", async () => 
   const [
     page,
     workspace,
+    trackFilters,
     board,
     importPanel,
     directImportForm,
     mapper,
     repository,
     hiddenRoute,
+    trackOrderRoute,
     packageJson,
     readme,
   ] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/HistoryWorkspace.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../components/toolbar/TrackFilters.tsx", import.meta.url),
+      "utf8",
+    ),
     readFile(new URL("../components/timeline/TimelineBoard.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/import/ImportPanel.tsx", import.meta.url), "utf8"),
     readFile(
@@ -151,6 +157,10 @@ test("keeps domain and Notion concerns outside the page component", async () => 
     readFile(new URL("../server/notion/repository.ts", import.meta.url), "utf8"),
     readFile(
       new URL("../app/api/admin/timeline/hidden/route.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/api/admin/tracks/order/route.ts", import.meta.url),
       "utf8",
     ),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
@@ -182,8 +192,15 @@ test("keeps domain and Notion concerns outside the page component", async () => 
   assert.match(repository, /select: \{ equals: "Published" \}/);
   assert.match(repository, /select: \{ equals: "Hidden" \}/);
   assert.match(hiddenRoute, /requireAdminRequest/);
+  assert.match(trackOrderRoute, /requireAdminRequest/);
+  assert.match(trackOrderRoute, /reorderTimelineTracks/);
   assert.match(workspace, /hidden-toggle/);
   assert.match(workspace, /visibleTimelineItems/);
+  assert.match(workspace, /TrackFilters/);
+  assert.match(trackFilters, /DndContext/);
+  assert.match(trackFilters, /SortableContext/);
+  assert.match(trackFilters, /\/api\/admin\/tracks\/order/);
+  assert.match(repository, /Failed to roll back a Notion Track order/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(readme, /vinext-starter|loading skeleton/i);
 

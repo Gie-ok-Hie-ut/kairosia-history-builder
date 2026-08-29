@@ -1,12 +1,14 @@
 import { invalidateTimelineCache } from "../server/cache/timeline-cache";
 import {
   attachNotionTrackToItems,
+  detachNotionTrackFromItems,
   migrateNotionTrack,
   upsertNotionTrack,
 } from "../server/notion/repository";
 import { commitImport } from "../server/use-cases/commit-import";
 import { CORE_HISTORY_ITEMS, CORE_HISTORY_TRACKS } from "./core-history-data";
 import {
+  EAST_ASIAN_KOREAN_TITLES_TO_DETACH,
   EAST_ASIAN_RELATED_TITLES,
   EUROPEAN_RELATED_TITLES,
   HISTORY_EXPANSION_ITEMS,
@@ -71,6 +73,12 @@ const linked =
     [...EUROPEAN_RELATED_TITLES],
   ));
 console.info(`Existing item relations updated: ${linked}`);
+
+const detached = await detachNotionTrackFromItems(
+  "east-asian-history",
+  [...EAST_ASIAN_KOREAN_TITLES_TO_DETACH],
+);
+console.info(`Korean-only items removed from East Asian history: ${detached}`);
 invalidateTimelineCache();
 
 console.info(

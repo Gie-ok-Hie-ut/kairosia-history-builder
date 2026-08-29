@@ -26,6 +26,7 @@ import type {
 import { ImportPanel } from "@/components/import/ImportPanel";
 import { DetailPanel } from "@/components/timeline/DetailPanel";
 import { TimelineBoard } from "@/components/timeline/TimelineBoard";
+import { TrackFilters } from "@/components/toolbar/TrackFilters";
 
 interface HistoryWorkspaceProps {
   dataset: TimelineDataset;
@@ -36,19 +37,20 @@ const VIEW_STORAGE_KEY = "braided-history:view";
 const VIEW_STORAGE_VERSION = 2;
 
 export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
-  const rootTracks = useMemo(
+  const initialRootTracks = useMemo(
     () =>
       dataset.tracks
         .filter((track) => track.parentKey == null)
         .sort((a, b) => a.order - b.order),
     [dataset.tracks],
   );
+  const [rootTracks, setRootTracks] = useState(initialRootTracks);
   const [timelineItems, setTimelineItems] = useState(dataset.items);
   const [showHidden, setShowHidden] = useState(false);
   const [hiddenLoading, setHiddenLoading] = useState(false);
   const [hiddenError, setHiddenError] = useState("");
   const [activeTrackKeys, setActiveTrackKeys] = useState<string[]>(
-    rootTracks.filter((track) => track.visible).map((track) => track.key),
+    initialRootTracks.filter((track) => track.visible).map((track) => track.key),
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [mode, setMode] = useState<TimelineMode>("compressed");
@@ -81,7 +83,7 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
           version?: number;
         };
         if (value.activeTrackKeys?.length) {
-          const known = new Set(rootTracks.map((track) => track.key));
+          const known = new Set(initialRootTracks.map((track) => track.key));
           const valid = value.activeTrackKeys.filter((key) => known.has(key));
           if (valid.length) setActiveTrackKeys(valid);
         }
@@ -106,7 +108,7 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
     }, 0);
 
     return () => window.clearTimeout(restoreTimer);
-  }, [rootTracks]);
+  }, [initialRootTracks]);
 
   useEffect(() => {
     if (!viewRestored) return;
@@ -124,6 +126,12 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
   const activeTracks = rootTracks.filter((track) =>
     activeTrackKeys.includes(track.key),
   );
+  const registrationTracks = [
+    ...rootTracks,
+    ...dataset.tracks
+      .filter((track) => track.parentKey != null)
+      .sort((a, b) => a.order - b.order),
+  ];
   const visibleTimelineItems = timelineItems.filter(
     (item) => item.visibility === "published" || showHidden,
   );
@@ -437,21 +445,13 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
               )}
             </button>
           ) : null}
-          {rootTracks.map((track) => {
-            const active = activeTrackKeys.includes(track.key);
-            return (
-              <label key={track.key} title={track.description || track.name}>
-                <input
-                  checked={active}
-                  disabled={active && activeTrackKeys.length === 1}
-                  onChange={() => toggleTrack(track)}
-                  type="checkbox"
-                />
-                <i style={{ backgroundColor: track.color }} />
-                <span>{track.name}</span>
-              </label>
-            );
-          })}
+          <TrackFilters
+            activeTrackKeys={activeTrackKeys}
+            onOrderChange={setRootTracks}
+            onToggle={toggleTrack}
+            reorderEnabled={dataset.source === "notion"}
+            tracks={rootTracks}
+          />
         </div>
 
         <div className="zoom-control">
@@ -511,7 +511,7 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
         onClose={() => setImportOpen(false)}
         onCommitted={applyImportedItems}
         open={importOpen}
-        tracks={dataset.tracks}
+        tracks={registrationTracks}
       />
     </main>
   );

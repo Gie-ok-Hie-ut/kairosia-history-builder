@@ -14,6 +14,7 @@ import { assignLanes } from "../domain/timeline/lane-layout";
 import { createGoogleMapsUrl } from "../domain/timeline/location";
 import { createTimelineScale } from "../domain/timeline/time-scale";
 import { timelineItemUpdateSchema } from "../domain/timeline/update-schema";
+import { trackOrderUpdateSchema } from "../domain/timeline/track-order-schema";
 import {
   createCenturyPhaseBands,
   createTimelineVisualItems,
@@ -27,6 +28,7 @@ import type {
 } from "../domain/timeline/types";
 import { mapTimelinePage } from "../server/notion/mapper";
 import {
+  reorderNotionTracks,
   setNotionItemVisibility,
   trashNotionItem,
   updateNotionItemMetadata,
@@ -250,6 +252,89 @@ test("validates editable timeline metadata", () => {
     }).success,
     false,
   );
+});
+
+test("requires a unique ordered list of Track keys", () => {
+  assert.equal(
+    trackOrderUpdateSchema.safeParse({
+      trackKeys: ["korean-history", "world-history"],
+    }).success,
+    true,
+  );
+  assert.equal(
+    trackOrderUpdateSchema.safeParse({
+      trackKeys: ["korean-history", "korean-history"],
+    }).success,
+    false,
+  );
+  assert.equal(
+    trackOrderUpdateSchema.safeParse({ trackKeys: [] }).success,
+    false,
+  );
+});
+
+test("persists the complete root Track order in Notion", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.NOTION_API_KEY;
+  const originalTracksDataSourceId =
+    process.env.NOTION_TRACKS_DATA_SOURCE_ID;
+  const patches: Array<{ url: string; body: unknown }> = [];
+  process.env.NOTION_API_KEY = "test-api-key";
+  process.env.NOTION_TRACKS_DATA_SOURCE_ID = "tracks-source";
+
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/data_sources/tracks-source/query")) {
+      return Response.json({
+        results: [
+          notionTrackPage("track-korean", "korean-history", "한국사", 1),
+          notionTrackPage("track-world", "world-history", "세계사", 2),
+        ],
+        has_more: false,
+        next_cursor: null,
+      });
+    }
+    patches.push({
+      url,
+      body: JSON.parse(String(init?.body ?? "{}")),
+    });
+    return Response.json({ object: "page", id: "updated-track" });
+  };
+
+  try {
+    const tracks = await reorderNotionTracks([
+      "world-history",
+      "korean-history",
+    ]);
+
+    assert.deepEqual(
+      tracks.map((track) => [track.key, track.order]),
+      [
+        ["world-history", 1],
+        ["korean-history", 2],
+      ],
+    );
+    assert.deepEqual(
+      patches.map((entry) => [
+        entry.url.split("/").at(-1),
+        (entry.body as { properties: { Order: { number: number } } }).properties
+          .Order.number,
+      ]),
+      [
+        ["track-world", 1],
+        ["track-korean", 2],
+      ],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey == null) delete process.env.NOTION_API_KEY;
+    else process.env.NOTION_API_KEY = originalApiKey;
+    if (originalTracksDataSourceId == null) {
+      delete process.env.NOTION_TRACKS_DATA_SOURCE_ID;
+    } else {
+      process.env.NOTION_TRACKS_DATA_SOURCE_ID = originalTracksDataSourceId;
+    }
+  }
 });
 
 test("updates editable metadata through Notion page properties", async () => {
@@ -578,6 +663,28 @@ function editableNotionPage(status = "Published"): NotionPage {
       Confidence: selectProperty("high"),
       UncertaintyNote: textProperty(""),
       Status: selectProperty(status),
+    },
+  };
+}
+
+function notionTrackPage(
+  id: string,
+  key: string,
+  name: string,
+  order: number,
+): NotionPage {
+  return {
+    id,
+    last_edited_time: "2026-08-29T00:00:00.000Z",
+    object: "page",
+    properties: {
+      Name: titleProperty(name),
+      Key: textProperty(key),
+      Order: { type: "number", number: order },
+      Color: selectProperty("blue"),
+      Visible: { type: "checkbox", checkbox: true },
+      Description: textProperty(""),
+      Parent: { type: "relation", relation: [] },
     },
   };
 }

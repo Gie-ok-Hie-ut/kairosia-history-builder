@@ -312,6 +312,96 @@ export async function attachNotionTrackToItems(
   return updated;
 }
 
+export async function detachNotionTrackFromItems(
+  trackKey: string,
+  titles: string[],
+): Promise<number> {
+  const tracks = await listTracks();
+  const track = tracks.find((entry) => entry.key === trackKey);
+  if (!track) throw new Error("알 수 없는 Track Key: " + trackKey);
+
+  let updated = 0;
+  for (const title of titles) {
+    const pages = await queryDataSource(
+      requiredEnv("NOTION_ITEMS_DATA_SOURCE_ID"),
+      {
+        filter: { property: "Title", title: { equals: title } },
+        page_size: 10,
+      },
+    );
+    for (const page of pages) {
+      const relationIds = readRelations(page.properties.Tracks);
+      if (!relationIds.includes(track.id)) continue;
+      await notionRequest<NotionPage>("/pages/" + page.id, {
+        method: "PATCH",
+        body: JSON.stringify({
+          properties: {
+            Tracks: {
+              relation: relationIds
+                .filter((id) => id !== track.id)
+                .map((id) => ({ id })),
+            },
+          },
+        }),
+      });
+      updated += 1;
+    }
+  }
+  return updated;
+}
+
+export async function reorderNotionTracks(
+  orderedKeys: string[],
+): Promise<TimelineTrack[]> {
+  const tracks = await listTracks();
+  const rootTracks = tracks.filter((track) => track.parentKey == null);
+  const rootByKey = new Map(rootTracks.map((track) => [track.key, track]));
+
+  if (
+    orderedKeys.length !== rootTracks.length ||
+    orderedKeys.some((key) => !rootByKey.has(key)) ||
+    new Set(orderedKeys).size !== orderedKeys.length
+  ) {
+    throw new Error("Notion의 현재 최상위 Track 구성과 요청이 일치하지 않습니다.");
+  }
+
+  const changes = orderedKeys.flatMap((key, index) => {
+    const track = rootByKey.get(key);
+    if (!track || track.order === index + 1) return [];
+    return [{ track, nextOrder: index + 1 }];
+  });
+  const applied: typeof changes = [];
+
+  try {
+    for (const change of changes) {
+      await patchNotionTrackOrder(change.track.id, change.nextOrder);
+      applied.push(change);
+    }
+  } catch (error) {
+    for (const change of [...applied].reverse()) {
+      try {
+        await patchNotionTrackOrder(change.track.id, change.track.order);
+      } catch (rollbackError) {
+        console.error("Failed to roll back a Notion Track order.", {
+          trackKey: change.track.key,
+          rollbackError,
+        });
+      }
+    }
+    throw error;
+  }
+
+  const orderByKey = new Map(
+    orderedKeys.map((key, index) => [key, index + 1]),
+  );
+  return tracks
+    .map((track) => ({
+      ...track,
+      order: orderByKey.get(track.key) ?? track.order,
+    }))
+    .sort((a, b) => a.order - b.order);
+}
+
 export async function getNotionItemDetail(
   id: string,
   dataset: TimelineDataset,
@@ -514,6 +604,15 @@ function notionTrackProperties(input: NotionTrackInput) {
     Visible: { checkbox: input.visible },
     Description: { rich_text: richText(input.description) },
   };
+}
+
+async function patchNotionTrackOrder(id: string, order: number) {
+  await notionRequest<NotionPage>("/pages/" + id, {
+    method: "PATCH",
+    body: JSON.stringify({
+      properties: { Order: { number: order } },
+    }),
+  });
 }
 
 async function queryDataSource(

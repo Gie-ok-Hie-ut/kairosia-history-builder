@@ -12,7 +12,7 @@
 
 Kairosia is designed to show **what was happening across different histories at the same time**, rather than presenting another isolated list of dates.
 
-1. Select tracks such as Korean, world, Christian and Israel, East Asian, European, or science history and compare them in one view.
+1. Select tracks such as Korean, world, Christian and Israel, East Asian, European, or science history and compare them in one view. Drag a track handle to reorder every timeline column; the order is saved to Notion.
 2. Open an event to inspect its description, categories, sources, and location.
 3. Add one event with the direct form or paste schema-compliant JSON produced by ChatGPT.
 4. Only reviewed data is written to Notion, and the timeline renders that source data.
