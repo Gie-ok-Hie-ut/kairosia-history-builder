@@ -34,6 +34,7 @@ import type {
 import { mapTimelinePage } from "../server/notion/mapper";
 import {
   reorderNotionTracks,
+  setNotionItemBookmark,
   setNotionItemVisibility,
   trashNotionItem,
   updateNotionItemMetadata,
@@ -116,6 +117,30 @@ test("gives higher-importance events the first overlap lane", () => {
       { id: "core", lane: 0 },
       { id: "detail", lane: 1 },
     ],
+  );
+});
+
+test("gives bookmarked events visual priority without changing importance", () => {
+  const ordinary = timelineItem("ordinary", 1900);
+  const bookmarked = {
+    ...timelineItem("bookmarked", 1900),
+    bookmarked: true,
+    importance: "detail" as const,
+  };
+  const positioned = positionTimelineVisualItems(
+    createTimelineVisualItems([ordinary, bookmarked], ["test"]),
+    ["test"],
+    (ordinal) => ordinal,
+    38,
+  );
+
+  assert.equal(
+    positioned.find((entry) => entry.visual.item.id === "bookmarked")?.lane,
+    0,
+  );
+  assert.equal(
+    positioned.find((entry) => entry.visual.item.id === "ordinary")?.lane,
+    1,
   );
 });
 
@@ -306,6 +331,83 @@ test("changes Notion visibility without exposing Draft as a timeline item", asyn
     globalThis.fetch = originalFetch;
     if (originalApiKey == null) delete process.env.NOTION_API_KEY;
     else process.env.NOTION_API_KEY = originalApiKey;
+  }
+});
+
+test("creates the Notion bookmark property and persists bookmark state", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.NOTION_API_KEY;
+  const originalItemsDataSourceId = process.env.NOTION_ITEMS_DATA_SOURCE_ID;
+  const requests: Array<{ url: string; method: string; body: unknown }> = [];
+  process.env.NOTION_API_KEY = "test-api-key";
+  process.env.NOTION_ITEMS_DATA_SOURCE_ID = "items-source";
+
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    const method = init?.method ?? "GET";
+    const body = init?.body ? JSON.parse(String(init.body)) : null;
+    requests.push({ url, method, body });
+
+    if (url.endsWith("/data_sources/items-source") && method === "GET") {
+      return Response.json({
+        object: "data_source",
+        id: "items-source",
+        parent: { type: "database_id", database_id: "database-id" },
+        properties: {},
+      });
+    }
+    if (url.endsWith("/data_sources/items-source") && method === "PATCH") {
+      return Response.json({
+        object: "data_source",
+        id: "items-source",
+        parent: { type: "database_id", database_id: "database-id" },
+        properties: { Bookmarked: { type: "checkbox" } },
+      });
+    }
+    if (url.endsWith("/pages/notion-item") && method === "PATCH") {
+      return Response.json(editableNotionPage("Published", true));
+    }
+    return Response.json(editableNotionPage());
+  };
+
+  try {
+    const item = await setNotionItemBookmark("notion-item", true, [
+      {
+        id: "track-christian",
+        key: "christian-history",
+        name: "기독교사",
+        parentKey: null,
+        order: 1,
+        color: "#b45309",
+        visible: true,
+      },
+    ]);
+    const schemaPatch = requests.find(
+      (entry) =>
+        entry.url.endsWith("/data_sources/items-source") &&
+        entry.method === "PATCH",
+    );
+    const pagePatch = requests.find(
+      (entry) =>
+        entry.url.endsWith("/pages/notion-item") && entry.method === "PATCH",
+    );
+
+    assert.equal(item?.bookmarked, true);
+    assert.deepEqual(schemaPatch?.body, {
+      properties: { Bookmarked: { checkbox: {} } },
+    });
+    assert.deepEqual(pagePatch?.body, {
+      properties: { Bookmarked: { checkbox: true } },
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey == null) delete process.env.NOTION_API_KEY;
+    else process.env.NOTION_API_KEY = originalApiKey;
+    if (originalItemsDataSourceId == null) {
+      delete process.env.NOTION_ITEMS_DATA_SOURCE_ID;
+    } else {
+      process.env.NOTION_ITEMS_DATA_SOURCE_ID = originalItemsDataSourceId;
+    }
   }
 });
 
@@ -640,6 +742,7 @@ test("maps optional Notion location properties into the canonical model", () => 
       Summary: textProperty("로잔언약이 채택된 국제 복음주의 대회"),
       RecordLevel: selectProperty("standard"),
       Confidence: selectProperty("high"),
+      Bookmarked: { type: "checkbox", checkbox: true },
       PlaceName: textProperty("스위스 로잔"),
       Latitude: { type: "number", number: 46.5197 },
       Longitude: { type: "number", number: 6.6323 },
@@ -660,6 +763,7 @@ test("maps optional Notion location properties into the canonical model", () => 
       precision: "approximate",
     },
   ]);
+  assert.equal(item.bookmarked, true);
 });
 
 test("creates stable fingerprints for canonical object keys", async () => {
@@ -674,6 +778,7 @@ function visual(id: string, ordinal: number): TimelineVisualItem {
     id,
     slug: id,
     visibility: "published",
+    bookmarked: false,
     title: id,
     type: "event",
     time: {
@@ -702,6 +807,7 @@ function timelineItem(id: string, start: number, end?: number): TimelineItem {
     id,
     slug: id,
     visibility: "published",
+    bookmarked: false,
     title: id,
     type: "event",
     time: {
@@ -764,7 +870,10 @@ function editableMetadata() {
   };
 }
 
-function editableNotionPage(status = "Published"): NotionPage {
+function editableNotionPage(
+  status = "Published",
+  bookmarked = false,
+): NotionPage {
   return {
     id: "notion-item",
     last_edited_time: "2026-08-29T00:00:00.000Z",
@@ -790,6 +899,7 @@ function editableNotionPage(status = "Published"): NotionPage {
       Confidence: selectProperty("high"),
       UncertaintyNote: textProperty(""),
       Status: selectProperty(status),
+      Bookmarked: { type: "checkbox", checkbox: bookmarked },
     },
   };
 }

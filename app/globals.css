@@ -540,6 +540,39 @@ a:focus-visible {
   cursor: wait;
 }
 
+.bookmark-filter-toggle {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  height: 30px;
+  min-width: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 0 7px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.bookmark-filter-toggle span {
+  min-width: 9px;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+}
+
+.bookmark-filter-toggle:hover,
+.bookmark-filter-toggle.is-active {
+  border-color: #d2b66f;
+  background: #fff8e7;
+  color: #8b5a00;
+}
+
 .year-jump button,
 .zoom-control button,
 .icon-actions button {
@@ -1051,15 +1084,22 @@ a:focus-visible {
   opacity: 0.92;
 }
 
-.timeline-card-hidden-icon {
+.timeline-card-indicators {
   position: absolute;
   top: 5px;
   right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
   color: #617178;
 }
 
-.timeline-card.is-hidden .timeline-card-year {
-  padding-right: 14px;
+.timeline-card-bookmark-icon {
+  color: #9a6200;
+}
+
+.timeline-card.has-indicators .timeline-card-year {
+  padding-right: 28px;
 }
 
 .detail-panel {
@@ -1099,6 +1139,7 @@ a:focus-visible {
   gap: 6px;
 }
 
+.detail-bookmark-trigger,
 .detail-visibility-trigger,
 .detail-edit-trigger,
 .detail-delete-trigger {
@@ -1113,6 +1154,13 @@ a:focus-visible {
   cursor: pointer;
 }
 
+.detail-bookmark-trigger:hover,
+.detail-bookmark-trigger.is-active {
+  border-color: #d2b66f;
+  background: #fff8e7;
+  color: #8b5a00;
+}
+
 .detail-visibility-trigger:hover,
 .detail-visibility-trigger.is-hidden {
   border-color: #9bbac7;
@@ -1120,6 +1168,7 @@ a:focus-visible {
   color: #1f647d;
 }
 
+.detail-bookmark-trigger:disabled,
 .detail-visibility-trigger:disabled {
   cursor: wait;
   opacity: 0.55;
@@ -1146,6 +1195,7 @@ a:focus-visible {
   text-transform: none;
 }
 
+.detail-bookmark-error,
 .detail-visibility-error {
   margin: 10px 0 0;
   border-left: 3px solid var(--danger);

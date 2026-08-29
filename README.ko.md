@@ -13,12 +13,12 @@
 Kairosia는 연도가 적힌 사건 목록이 아니라, **서로 다른 역사가 같은 시기에 어떻게 겹쳤는지** 보기 위한 도구입니다.
 
 1. **트랙** 메뉴에서 화면에 표시할 분야를 고르고, 손잡이를 드래그해 연표 열 순서를 바꿉니다. 순서는 Notion에 저장되고 표시 여부는 현재 브라우저의 개인 설정으로 남습니다.
-2. 사건을 누르면 설명, 분류, 출처와 발생 위치를 확인합니다.
+2. 사건을 눌러 상세 내용을 확인하거나 북마크하고, 관심 사건만 모아봅니다.
 3. 여섯 단계로 확대합니다. 정확한 월·일이 있는 사건은 한 해 안에서도 서로 다른 위치에 놓이고 최대 확대에서는 분기 눈금이 나타납니다.
 4. 새 사건을 직접 입력하거나 ChatGPT가 만든 약속된 JSON을 붙여넣습니다.
 5. 확인된 데이터만 Notion에 저장되고, 연표는 그 내용을 다시 읽어 표시합니다.
 
-Notion이 원본 데이터이므로 별도의 데이터베이스 서버를 운영할 필요가 없습니다. 사건을 편집하거나 숨기고 삭제하면 연결된 Notion에도 같은 변경이 반영됩니다.
+Notion이 원본 데이터이므로 별도의 데이터베이스 서버를 운영할 필요가 없습니다. 사건을 편집하거나 북마크하고 숨기거나 삭제하면 연결된 Notion에도 같은 변경이 반영됩니다.
 
 ## 사건 등록
 
@@ -104,11 +104,12 @@ Notion에 전체 페이지 데이터베이스 두 개를 만들고 이름을 각
 | `Tracks` | Tracks 데이터 소스 Relation |
 | `RelatedItems` | 같은 Timeline Items 데이터 소스 Relation |
 | `Tags` | Multi-select |
+| `Bookmarked` | Checkbox |
 | `Summary`, `UncertaintyNote`, `Slug`, `ImportFingerprint`, `PlaceName` | Rich text |
 | `Latitude`, `Longitude` | Number |
 | `LocationPrecision` | Select |
 
-기본 연표에는 `Status=Published`인 사건만 나타납니다. `Hidden`은 눈 토글을 켰을 때만 보이고 `Draft`는 연표에 표시되지 않습니다.
+기본 연표에는 `Status=Published`인 사건만 나타납니다. `Hidden`은 눈 토글을 켰을 때만 보이고 `Draft`는 연표에 표시되지 않습니다. 기존 설치에 `Bookmarked`가 없으면 첫 북마크 변경 때 Kairosia가 체크박스 속성을 자동으로 만듭니다.
 
 </details>
 

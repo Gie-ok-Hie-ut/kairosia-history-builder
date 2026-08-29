@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  Bookmark,
   CalendarRange,
   Database,
   Eye,
@@ -48,6 +49,7 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
   );
   const [rootTracks, setRootTracks] = useState(initialRootTracks);
   const [timelineItems, setTimelineItems] = useState(dataset.items);
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [hiddenLoading, setHiddenLoading] = useState(false);
   const [hiddenError, setHiddenError] = useState("");
@@ -80,6 +82,7 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
       try {
         const value = JSON.parse(saved) as {
           activeTrackKeys?: string[];
+          bookmarkedOnly?: boolean;
           knownTrackKeys?: string[];
           mode?: TimelineMode;
           zoomIndex?: number;
@@ -107,6 +110,12 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
           setMode(value.mode);
         }
         if (
+          value.version === VIEW_STORAGE_VERSION &&
+          typeof value.bookmarkedOnly === "boolean"
+        ) {
+          setBookmarkedOnly(value.bookmarkedOnly);
+        }
+        if (
           typeof value.zoomIndex === "number" &&
           value.zoomIndex >= 0 &&
           value.zoomIndex < ZOOM_LEVELS.length
@@ -129,13 +138,21 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
       VIEW_STORAGE_KEY,
       JSON.stringify({
         activeTrackKeys,
+        bookmarkedOnly,
         knownTrackKeys: initialRootTracks.map((track) => track.key),
         mode,
         version: VIEW_STORAGE_VERSION,
         zoomIndex,
       }),
     );
-  }, [activeTrackKeys, initialRootTracks, mode, viewRestored, zoomIndex]);
+  }, [
+    activeTrackKeys,
+    bookmarkedOnly,
+    initialRootTracks,
+    mode,
+    viewRestored,
+    zoomIndex,
+  ]);
 
   const activeTracks = rootTracks.filter((track) =>
     activeTrackKeys.includes(track.key),
@@ -149,8 +166,12 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
   const visibleTimelineItems = timelineItems.filter(
     (item) => item.visibility === "published" || showHidden,
   );
+  const bookmarkedCount = visibleTimelineItems.filter(
+    (item) => item.bookmarked,
+  ).length;
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredItems = visibleTimelineItems.filter((item) => {
+    if (bookmarkedOnly && !item.bookmarked) return false;
     if (!normalizedQuery) return true;
     return (
       item.title.toLowerCase().includes(normalizedQuery) ||
@@ -291,6 +312,39 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
       }
       return updated;
     });
+    return updated;
+  }
+
+  async function changeItemBookmark(
+    itemId: string,
+    bookmarked: boolean,
+  ): Promise<TimelineItem> {
+    const response = await fetch(
+      "/api/admin/timeline/" + encodeURIComponent(itemId) + "/bookmark",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookmarked }),
+      },
+    );
+    const result = (await response.json().catch(() => null)) as
+      | { ok?: boolean; item?: TimelineItem; message?: string }
+      | null;
+    if (!response.ok || !result?.ok || !result.item) {
+      throw new Error(result?.message ?? "북마크 상태 변경에 실패했습니다.");
+    }
+
+    const existing =
+      selectedItem?.id === itemId
+        ? selectedItem
+        : timelineItems.find((item) => item.id === itemId);
+    const updated = mergeTimelineItem(existing, result.item);
+    setTimelineItems((current) =>
+      mergeTimelineItems(current, [result.item as TimelineItem]),
+    );
+    setSelectedItem((current) =>
+      current?.id === itemId ? updated : current,
+    );
     return updated;
   }
 
@@ -459,6 +513,29 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
         />
         {dataset.source === "notion" ? (
           <button
+            aria-label={`북마크한 사건만 보기 (${bookmarkedCount}개)`}
+            aria-pressed={bookmarkedOnly}
+            className={
+              "bookmark-filter-toggle" +
+              (bookmarkedOnly ? " is-active" : "")
+            }
+            onClick={() => setBookmarkedOnly((current) => !current)}
+            title={
+              bookmarkedOnly
+                ? "모든 사건 보기"
+                : `북마크한 사건만 보기 (${bookmarkedCount}개)`
+            }
+            type="button"
+          >
+            <Bookmark
+              fill={bookmarkedOnly ? "currentColor" : "none"}
+              size={14}
+            />
+            <span>{bookmarkedCount}</span>
+          </button>
+        ) : null}
+        {dataset.source === "notion" ? (
+          <button
             aria-label={showHidden ? "숨긴 사건 감추기" : "숨긴 사건 보기"}
             aria-pressed={showHidden}
             className={
@@ -510,6 +587,9 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
         <DetailPanel
           item={selectedItem}
           key={selectedItem?.id ?? "empty"}
+          onBookmarkChange={
+            dataset.source === "notion" ? changeItemBookmark : undefined
+          }
           onDelete={dataset.source === "notion" ? deleteItem : undefined}
           onVisibilityChange={
             dataset.source === "notion" ? changeItemVisibility : undefined

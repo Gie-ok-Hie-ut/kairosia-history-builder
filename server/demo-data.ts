@@ -256,6 +256,7 @@ function item(input: {
     id: input.id,
     slug: input.id,
     visibility: "published",
+    bookmarked: false,
     title: input.title,
     type: input.type,
     time: {

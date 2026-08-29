@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import {
+  Bookmark,
   BookOpen,
   CalendarDays,
   CircleHelp,
@@ -35,6 +36,10 @@ import { EventMap } from "./EventMap";
 interface DetailPanelProps {
   item: TimelineItem | null;
   tracks: TimelineTrack[];
+  onBookmarkChange?: (
+    itemId: string,
+    bookmarked: boolean,
+  ) => Promise<TimelineItem>;
   onDelete?: (itemId: string) => Promise<void>;
   onVisibilityChange?: (
     itemId: string,
@@ -81,6 +86,7 @@ const CONFIDENCE_OPTIONS = Object.entries(CONFIDENCE_LABELS) as Array<
 export function DetailPanel({
   item,
   tracks,
+  onBookmarkChange,
   onDelete,
   onVisibilityChange,
   onUpdate,
@@ -93,6 +99,8 @@ export function DetailPanel({
   const [editError, setEditError] = useState("");
   const [visibilityChanging, setVisibilityChanging] = useState(false);
   const [visibilityError, setVisibilityError] = useState("");
+  const [bookmarkChanging, setBookmarkChanging] = useState(false);
+  const [bookmarkError, setBookmarkError] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [draft, setDraft] = useState<TimelineItemUpdate | null>(() =>
     item ? createEditDraft(item) : null,
@@ -160,6 +168,23 @@ export function DetailPanel({
     }
   }
 
+  async function handleBookmarkChange() {
+    if (!item || !onBookmarkChange) return;
+    setBookmarkChanging(true);
+    setBookmarkError("");
+    try {
+      await onBookmarkChange(item.id, !item.bookmarked);
+    } catch (error) {
+      setBookmarkError(
+        error instanceof Error
+          ? error.message
+          : "북마크 상태 변경에 실패했습니다.",
+      );
+    } finally {
+      setBookmarkChanging(false);
+    }
+  }
+
   function cancelEditing() {
     if (saving || !item) return;
     setDraft(createEditDraft(item));
@@ -219,6 +244,31 @@ export function DetailPanel({
           ) : null}
           {item.visibility === "hidden" && !editing ? (
             <span className="visibility-badge">숨김</span>
+          ) : null}
+          {onBookmarkChange && !editing ? (
+            <button
+              aria-label={
+                item.bookmarked ? "북마크에서 제거" : "북마크에 추가"
+              }
+              aria-pressed={item.bookmarked}
+              className={
+                "detail-bookmark-trigger" +
+                (item.bookmarked ? " is-active" : "")
+              }
+              disabled={bookmarkChanging}
+              onClick={handleBookmarkChange}
+              title={item.bookmarked ? "북마크에서 제거" : "북마크에 추가"}
+              type="button"
+            >
+              {bookmarkChanging ? (
+                <LoaderCircle className="spin" size={14} />
+              ) : (
+                <Bookmark
+                  fill={item.bookmarked ? "currentColor" : "none"}
+                  size={14}
+                />
+              )}
+            </button>
           ) : null}
           {onVisibilityChange && !editing ? (
             <button
@@ -280,6 +330,12 @@ export function DetailPanel({
       {visibilityError ? (
         <p className="detail-visibility-error" role="alert">
           {visibilityError}
+        </p>
+      ) : null}
+
+      {bookmarkError ? (
+        <p className="detail-bookmark-error" role="alert">
+          {bookmarkError}
         </p>
       ) : null}
 

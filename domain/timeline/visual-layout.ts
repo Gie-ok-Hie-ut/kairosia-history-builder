@@ -72,7 +72,9 @@ export function positionTimelineVisualItems(
           id: visual.visualId,
           start: top,
           end: bottom,
-          priority: getTimelineImportanceRank(visual.item),
+          priority:
+            (visual.item.bookmarked ? 10 : 0) +
+            getTimelineImportanceRank(visual.item),
         };
       });
     for (const result of assignLanes(trackItems, 7)) {

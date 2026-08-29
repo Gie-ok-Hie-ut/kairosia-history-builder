@@ -244,6 +244,27 @@ export async function setNotionItemVisibility(
   return mapTimelinePage(page, trackKeyById);
 }
 
+let bookmarkPropertyReady: Promise<void> | null = null;
+
+export async function setNotionItemBookmark(
+  id: string,
+  bookmarked: boolean,
+  tracks: TimelineTrack[],
+): Promise<TimelineItem | null> {
+  const existing = await getNotionItemById(id, tracks);
+  if (!existing) return null;
+
+  await ensureNotionBookmarkProperty();
+  const page = await notionRequest<NotionPage>("/pages/" + id, {
+    method: "PATCH",
+    body: JSON.stringify({
+      properties: { Bookmarked: { checkbox: bookmarked } },
+    }),
+  });
+  const trackKeyById = new Map(tracks.map((track) => [track.id, track.key]));
+  return mapTimelinePage(page, trackKeyById);
+}
+
 export async function updateNotionItemMetadata(
   id: string,
   input: TimelineItemUpdate,
@@ -611,6 +632,37 @@ async function patchNotionTrackOrder(id: string, order: number) {
     method: "PATCH",
     body: JSON.stringify({
       properties: { Order: { number: order } },
+    }),
+  });
+}
+
+async function ensureNotionBookmarkProperty(): Promise<void> {
+  if (!bookmarkPropertyReady) {
+    bookmarkPropertyReady = ensureNotionBookmarkPropertyOnce().catch((error) => {
+      bookmarkPropertyReady = null;
+      throw error;
+    });
+  }
+  return bookmarkPropertyReady;
+}
+
+async function ensureNotionBookmarkPropertyOnce(): Promise<void> {
+  const dataSourceId = requiredEnv("NOTION_ITEMS_DATA_SOURCE_ID");
+  const dataSource = await notionRequest<NotionDataSource>(
+    "/data_sources/" + dataSourceId,
+  );
+  const property = dataSource.properties?.Bookmarked;
+  if (property?.type === "checkbox") return;
+  if (property) {
+    throw new Error(
+      "Notion의 Bookmarked 속성은 체크박스 유형이어야 합니다.",
+    );
+  }
+
+  await notionRequest<NotionDataSource>("/data_sources/" + dataSourceId, {
+    method: "PATCH",
+    body: JSON.stringify({
+      properties: { Bookmarked: { checkbox: {} } },
     }),
   });
 }

@@ -8,7 +8,7 @@ import {
   useState,
   type MouseEvent,
 } from "react";
-import { EyeOff } from "lucide-react";
+import { Bookmark, EyeOff } from "lucide-react";
 import { formatHistoricalRange } from "@/domain/timeline/historical-date";
 import {
   createTimelineScale,
@@ -171,6 +171,10 @@ export function TimelineBoard({
             right.visual.startOrdinal -
             (left.visual.endOrdinal - left.visual.startOrdinal);
           if (durationDifference !== 0) return durationDifference;
+          const bookmarkDifference =
+            Number(left.visual.item.bookmarked) -
+            Number(right.visual.item.bookmarked);
+          if (bookmarkDifference !== 0) return bookmarkDifference;
           return (
             getTimelineImportanceRank(left.visual.item) -
             getTimelineImportanceRank(right.visual.item)
@@ -348,7 +352,11 @@ export function TimelineBoard({
                     "timeline-card" +
                     (selectedItemId === visual.item.id ? " is-selected" : "") +
                     (height > 54 ? " is-duration" : "") +
-                    (visual.item.visibility === "hidden" ? " is-hidden" : "")
+                    (visual.item.visibility === "hidden" ? " is-hidden" : "") +
+                    (visual.item.bookmarked ? " is-bookmarked" : "") +
+                    (visual.item.bookmarked || visual.item.visibility === "hidden"
+                      ? " has-indicators"
+                      : "")
                   }
                   key={visual.visualId}
                   onClick={() => onSelectItem(visual.item)}
@@ -363,16 +371,26 @@ export function TimelineBoard({
                     visual.item.title +
                     " · " +
                     formatHistoricalRange(visual.item.time) +
-                    (visual.item.visibility === "hidden" ? " · 숨김" : "")
+                    (visual.item.visibility === "hidden" ? " · 숨김" : "") +
+                    (visual.item.bookmarked ? " · 북마크" : "")
                   }
                   type="button"
                 >
-                  {visual.item.visibility === "hidden" ? (
-                    <EyeOff
-                      aria-hidden="true"
-                      className="timeline-card-hidden-icon"
-                      size={11}
-                    />
+                  {visual.item.bookmarked ||
+                  visual.item.visibility === "hidden" ? (
+                    <span className="timeline-card-indicators">
+                      {visual.item.bookmarked ? (
+                        <Bookmark
+                          aria-hidden="true"
+                          className="timeline-card-bookmark-icon"
+                          fill="currentColor"
+                          size={11}
+                        />
+                      ) : null}
+                      {visual.item.visibility === "hidden" ? (
+                        <EyeOff aria-hidden="true" size={11} />
+                      ) : null}
+                    </span>
                   ) : null}
                   <span className="timeline-card-year">
                     {formatHistoricalRange(visual.item.time)}

@@ -13,12 +13,12 @@
 Kairosia is designed to show **what was happening across different histories at the same time**, rather than presenting another isolated list of dates.
 
 1. Select visible columns from the **Tracks** menu, then drag their handles to reorder the timeline. The order is saved to Notion, while visibility remains a personal browser preference.
-2. Open an event to inspect its description, categories, sources, and location.
+2. Open an event to inspect its details or bookmark it for a focused personal view.
 3. Zoom through six levels. Exact month and day values occupy distinct positions within a year, with quarterly axis labels at the highest level.
 4. Add one event with the direct form or paste schema-compliant JSON produced by ChatGPT.
 5. Only reviewed data is written to Notion, and the timeline renders that source data.
 
-Notion remains the source of truth, so there is no separate database server to maintain. Editing, hiding, restoring, or deleting an event updates the connected Notion record.
+Notion remains the source of truth, so there is no separate database server to maintain. Editing, bookmarking, hiding, restoring, or deleting an event updates the connected Notion record.
 
 ## Registering an event
 
@@ -102,11 +102,12 @@ Use `teal`, `blue`, `amber`, `red`, `purple`, `violet`, `green`, `gray`, or a CS
 | `Tracks` | Relation to the Tracks data source |
 | `RelatedItems` | Relation to the same Timeline Items data source |
 | `Tags` | Multi-select |
+| `Bookmarked` | Checkbox |
 | `Summary`, `UncertaintyNote`, `Slug`, `ImportFingerprint`, `PlaceName` | Rich text |
 | `Latitude`, `Longitude` | Number |
 | `LocationPrecision` | Select |
 
-The default timeline includes only `Status=Published`. `Hidden` appears only when the eye toggle is enabled, and `Draft` never appears on the timeline.
+The default timeline includes only `Status=Published`. `Hidden` appears only when the eye toggle is enabled, and `Draft` never appears on the timeline. Existing installations may omit `Bookmarked`; Kairosia creates that checkbox automatically on the first bookmark change.
 
 </details>
 

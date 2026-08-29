@@ -66,6 +66,7 @@ export interface TimelineItem {
   id: string;
   slug: string;
   visibility: TimelineVisibility;
+  bookmarked: boolean;
   title: string;
   type: TimelineItemType;
   time: HistoricalRange;

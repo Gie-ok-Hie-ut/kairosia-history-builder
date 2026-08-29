@@ -28,6 +28,7 @@ export interface NotionPage {
 export interface NotionDataSource {
   object: "data_source";
   id: string;
+  properties?: Record<string, { type: string }>;
   parent: {
     type: string;
     database_id?: string;

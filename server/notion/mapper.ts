@@ -48,6 +48,7 @@ export function mapTimelinePage(
     slug: readText(page.properties.Slug) || page.id,
     visibility:
       readSelect(page.properties.Status) === "Hidden" ? "hidden" : "published",
+    bookmarked: readCheckbox(page.properties.Bookmarked) ?? false,
     title: readTitle(page.properties.Title),
     type: asItemType(readSelect(page.properties.Type)),
     time: {

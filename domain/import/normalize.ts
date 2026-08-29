@@ -12,6 +12,7 @@ export function importItemToPreview(
     id: "preview-" + index + "-" + fingerprint.slice(0, 8),
     slug: "item-" + startLabel + "-" + fingerprint.slice(0, 8),
     visibility: "published",
+    bookmarked: false,
     title: item.title,
     type: item.type,
     time: item.time,

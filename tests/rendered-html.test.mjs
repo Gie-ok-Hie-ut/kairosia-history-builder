@@ -137,6 +137,7 @@ test("keeps domain and Notion concerns outside the page component", async () => 
     mapper,
     repository,
     hiddenRoute,
+    bookmarkRoute,
     trackOrderRoute,
     packageJson,
     readme,
@@ -157,6 +158,13 @@ test("keeps domain and Notion concerns outside the page component", async () => 
     readFile(new URL("../server/notion/repository.ts", import.meta.url), "utf8"),
     readFile(
       new URL("../app/api/admin/timeline/hidden/route.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/api/admin/timeline/[id]/bookmark/route.ts",
+        import.meta.url,
+      ),
       "utf8",
     ),
     readFile(
@@ -192,6 +200,8 @@ test("keeps domain and Notion concerns outside the page component", async () => 
   assert.match(repository, /select: \{ equals: "Published" \}/);
   assert.match(repository, /select: \{ equals: "Hidden" \}/);
   assert.match(hiddenRoute, /requireAdminRequest/);
+  assert.match(bookmarkRoute, /requireAdminRequest/);
+  assert.match(bookmarkRoute, /setTimelineItemBookmark/);
   assert.match(trackOrderRoute, /requireAdminRequest/);
   assert.match(trackOrderRoute, /reorderTimelineTracks/);
   assert.match(workspace, /hidden-toggle/);
@@ -199,6 +209,8 @@ test("keeps domain and Notion concerns outside the page component", async () => 
   assert.match(workspace, /TrackFilters/);
   assert.match(workspace, /TrackVisibilityMenu/);
   assert.match(workspace, /track-toolbar-row/);
+  assert.match(workspace, /bookmark-filter-toggle/);
+  assert.match(workspace, /bookmarkedOnly/);
   assert.match(workspace, /\[2\.2, 4, 8, 20, 60, 180\]/);
   assert.match(trackFilters, /DndContext/);
   assert.match(trackFilters, /SortableContext/);
