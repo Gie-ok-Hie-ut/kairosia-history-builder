@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createFingerprint } from "../domain/import/fingerprint";
+import { createAiImportPrompt } from "../domain/import/ai-prompt";
 import {
   importPayloadSchema,
   registrationPayloadSchema,
@@ -771,6 +772,28 @@ test("creates stable fingerprints for canonical object keys", async () => {
   const right = await createFingerprint({ a: { c: 3, d: 4 }, b: 2 });
   assert.equal(left, right);
   assert.match(left, /^[a-f0-9]{64}$/);
+});
+
+test("builds an AI request with the current event JSON and Track keys", () => {
+  const current = payload();
+  current.items[0].title = "메이지 유신";
+  const prompt = createAiImportPrompt(current, [
+    {
+      id: "east-asian",
+      key: "east-asian-history",
+      name: "동아시아사",
+      parentKey: null,
+      order: 1,
+      color: "#7e22ce",
+      visible: true,
+    },
+  ]);
+
+  assert.match(prompt, /\[조사 대상\]\n메이지 유신/);
+  assert.match(prompt, /east-asian-history: 동아시아사/);
+  assert.match(prompt, /"schemaVersion": "1\.0"/);
+  assert.match(prompt, /"title": "메이지 유신"/);
+  assert.doesNotMatch(prompt, /```/);
 });
 
 function visual(id: string, ordinal: number): TimelineVisualItem {

@@ -186,6 +186,8 @@ test("keeps domain and Notion concerns outside the page component", async () => 
   assert.match(importPanel, /direct-editor-wrap[\s\S]*json-editor-wrap/);
   assert.match(importPanel, /json-editor-header/);
   assert.match(importPanel, /현재 JSON 복사/);
+  assert.match(importPanel, /AI 요청문과 현재 JSON 복사/);
+  assert.match(importPanel, /createAiImportPrompt/);
   assert.match(importPanel, /item=\{payload\.items\[0\]\}/);
   assert.match(importPanel, /registrationPayloadSchema/);
   assert.match(importPanel, /setJsonText\(serializePayload\(nextPayload\)\)/);

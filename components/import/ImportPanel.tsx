@@ -7,8 +7,10 @@ import {
   Clipboard,
   Database,
   Loader2,
+  Sparkles,
   X,
 } from "lucide-react";
+import { createAiImportPrompt } from "@/domain/import/ai-prompt";
 import {
   formatSchemaIssues,
   registrationPayloadSchema,
@@ -246,6 +248,15 @@ export function ImportPanel({
     }
   }
 
+  async function copyAiPrompt() {
+    try {
+      await navigator.clipboard.writeText(createAiImportPrompt(payload, tracks));
+      setMessage("AI 요청문과 현재 JSON을 복사했습니다.");
+    } catch {
+      setMessage("AI 요청문을 복사하지 못했습니다.");
+    }
+  }
+
   return (
     <div className="import-backdrop" role="presentation">
       <section
@@ -291,6 +302,15 @@ export function ImportPanel({
               <label htmlFor="event-import-json">JSON</label>
               <div>
                 <small>Schema 1.0 · 사건 1개</small>
+                <button
+                  aria-label="AI 요청문과 현재 JSON 복사"
+                  className="ai-prompt-copy"
+                  onClick={copyAiPrompt}
+                  title="AI 요청문 + JSON 복사"
+                  type="button"
+                >
+                  <Sparkles size={14} />
+                </button>
                 <button
                   aria-label="현재 JSON 복사"
                   onClick={copyJson}

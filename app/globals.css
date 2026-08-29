@@ -2109,6 +2109,16 @@ a:focus-visible {
   color: var(--ink);
 }
 
+.json-editor-header button.ai-prompt-copy {
+  border-color: #b7d8d2;
+  color: var(--accent);
+}
+
+.json-editor-header button.ai-prompt-copy:hover {
+  background: var(--accent-soft);
+  color: #0d615a;
+}
+
 .json-editor-wrap textarea {
   width: calc(100% - 28px);
   min-height: 0;
