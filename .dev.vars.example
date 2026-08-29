@@ -1,0 +1,5 @@
+# Cloudflare Deploy button asks for these values and stores them as Worker secrets.
+NOTION_API_KEY=
+NOTION_TRACKS_DATA_SOURCE_ID=
+NOTION_ITEMS_DATA_SOURCE_ID=
+ADMIN_EMAILS=

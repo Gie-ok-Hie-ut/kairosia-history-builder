@@ -1,0 +1,64 @@
+{
+  "name": "kairosia-history-builder",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
+    "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
+    "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
+    "deploy": "WRANGLER_LOG_PATH=.wrangler/wrangler.log wrangler deploy",
+    "deploy:local": "npm run build && npm run deploy",
+    "seed:core": "node --env-file=.env.local --import tsx scripts/seed-core-history.ts",
+    "test": "npm run build && tsx --test tests/domain.test.ts tests/rendered-html.test.mjs",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.35.0",
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "zod": "^4.5.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitejs/plugin-rsc": "0.5.26",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
+    "react-server-dom-webpack": "19.2.6",
+    "tailwindcss": "4.2.1",
+    "tsx": "4.22.1",
+    "typescript": "5.9.3",
+    "vinext": "0.0.50",
+    "vite": "8.0.13",
+    "wrangler": "4.92.0"
+  },
+  "type": "module",
+  "cloudflare": {
+    "bindings": {
+      "NOTION_API_KEY": {
+        "description": "Notion Connections에서 만든 Kairosia App의 Integration token입니다. GitHub에는 저장하지 마세요."
+      },
+      "NOTION_TRACKS_DATA_SOURCE_ID": {
+        "description": "Kairosia Tracks 데이터 소스의 ID입니다. Notion URL의 database ID가 아니라 API가 표시하는 data source ID를 사용합니다."
+      },
+      "NOTION_ITEMS_DATA_SOURCE_ID": {
+        "description": "Kairosia Timeline Items 데이터 소스의 ID입니다."
+      },
+      "ADMIN_EMAILS": {
+        "description": "편집 권한을 허용할 이메일입니다. 여러 명이면 쉼표로 구분하고 Cloudflare Access에도 같은 사용자를 허용하세요."
+      }
+    }
+  }
+}
