@@ -2,6 +2,7 @@ export interface LaneInput {
   id: string;
   start: number;
   end: number;
+  priority?: number;
 }
 
 export interface LaneResult {
@@ -11,7 +12,11 @@ export interface LaneResult {
 
 export function assignLanes(items: LaneInput[], gap = 6): LaneResult[] {
   const sorted = [...items].sort(
-    (a, b) => a.start - b.start || b.end - a.end || a.id.localeCompare(b.id),
+    (a, b) =>
+      a.start - b.start ||
+      b.end - a.end ||
+      (b.priority ?? 0) - (a.priority ?? 0) ||
+      a.id.localeCompare(b.id),
   );
   const laneEnds: number[] = [];
 

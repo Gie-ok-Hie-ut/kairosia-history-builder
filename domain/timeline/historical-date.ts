@@ -1,11 +1,37 @@
 import type { Era, HistoricalInstant, HistoricalRange } from "./types";
 
-export function toOrdinal(instant: Pick<HistoricalInstant, "year" | "era">): number {
+const COMMON_MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+export function toOrdinal(
+  instant: Pick<HistoricalInstant, "year" | "era" | "month" | "day">,
+): number {
   if (!Number.isInteger(instant.year) || instant.year < 1) {
     throw new RangeError("Historical years must be positive integers.");
   }
 
-  return instant.era === "BCE" ? 1 - instant.year : instant.year;
+  const base = instant.era === "BCE" ? 1 - instant.year : instant.year;
+  const month = instant.month ?? null;
+  const day = instant.day ?? null;
+  if (month == null) {
+    if (day != null) throw new RangeError("A historical day requires a month.");
+    return base;
+  }
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    throw new RangeError("Historical months must be between 1 and 12.");
+  }
+
+  const monthDays = daysInHistoricalMonth(instant.year, instant.era, month);
+  if (day != null && (!Number.isInteger(day) || day < 1 || day > monthDays)) {
+    throw new RangeError("Historical day is outside the selected month.");
+  }
+
+  const daysInYear = isLeapHistoricalYear(instant.year, instant.era) ? 366 : 365;
+  const daysBeforeMonth = Array.from(
+    { length: month - 1 },
+    (_, index) => daysInHistoricalMonth(instant.year, instant.era, index + 1),
+  ).reduce((total, value) => total + value, 0);
+  const dayOffset = day == null ? (monthDays - 1) / 2 : day - 1;
+  return base + (daysBeforeMonth + dayOffset) / daysInYear;
 }
 
 export function fromOrdinal(ordinal: number): { year: number; era: Era } {
@@ -18,6 +44,50 @@ export function fromOrdinal(ordinal: number): { year: number; era: Era } {
     : { year: ordinal, era: "CE" };
 }
 
+export function fromPreciseOrdinal(ordinal: number): {
+  year: number;
+  era: Era;
+  month: number;
+  day: number;
+} {
+  if (!Number.isFinite(ordinal)) {
+    throw new RangeError("Ordinal date must be finite.");
+  }
+
+  const wholeYear = Math.floor(ordinal);
+  const date = fromOrdinal(wholeYear);
+  const daysInYear = isLeapHistoricalYear(date.year, date.era) ? 366 : 365;
+  let dayOfYear = Math.min(
+    daysInYear - 1,
+    Math.max(0, Math.floor((ordinal - wholeYear) * daysInYear + 1e-7)),
+  );
+
+  for (let month = 1; month <= 12; month += 1) {
+    const monthDays = daysInHistoricalMonth(date.year, date.era, month);
+    if (dayOfYear < monthDays) {
+      return { ...date, month, day: dayOfYear + 1 };
+    }
+    dayOfYear -= monthDays;
+  }
+
+  return { ...date, month: 12, day: 31 };
+}
+
+export function daysInHistoricalMonth(
+  year: number,
+  era: Era,
+  month: number,
+): number {
+  if (!Number.isInteger(year) || year < 1) {
+    throw new RangeError("Historical years must be positive integers.");
+  }
+  if (!Number.isInteger(month) || month < 1 || month > 12) {
+    throw new RangeError("Historical months must be between 1 and 12.");
+  }
+  if (month === 2 && isLeapHistoricalYear(year, era)) return 29;
+  return COMMON_MONTH_DAYS[month - 1];
+}
+
 export function formatHistoricalYear(
   instant: Pick<HistoricalInstant, "year" | "era">,
 ): string {
@@ -26,13 +96,22 @@ export function formatHistoricalYear(
     : instant.year + "년";
 }
 
+export function formatHistoricalInstant(
+  instant: Pick<HistoricalInstant, "year" | "era" | "month" | "day">,
+): string {
+  const year = formatHistoricalYear(instant);
+  if (instant.month == null) return year;
+  const month = ` ${instant.month}월`;
+  return instant.day == null ? year + month : year + month + ` ${instant.day}일`;
+}
+
 export function formatHistoricalRange(range: HistoricalRange): string {
-  if (!range.end) return formatHistoricalYear(range.start);
+  if (!range.end) return formatHistoricalInstant(range.start);
 
   return (
-    formatHistoricalYear(range.start) +
+    formatHistoricalInstant(range.start) +
     " - " +
-    formatHistoricalYear(range.end)
+    formatHistoricalInstant(range.end)
   );
 }
 
@@ -63,4 +142,12 @@ export function getRangeOrdinals(range: HistoricalRange): {
   const start = toOrdinal(range.start);
   const end = range.end ? toOrdinal(range.end) : start;
   return { start, end };
+}
+
+function isLeapHistoricalYear(year: number, era: Era) {
+  const astronomicalYear = era === "BCE" ? 1 - year : year;
+  return (
+    astronomicalYear % 4 === 0 &&
+    (astronomicalYear % 100 !== 0 || astronomicalYear % 400 === 0)
+  );
 }

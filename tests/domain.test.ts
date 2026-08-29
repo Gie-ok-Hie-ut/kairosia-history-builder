@@ -4,9 +4,12 @@ import { createFingerprint } from "../domain/import/fingerprint";
 import {
   importPayloadSchema,
   registrationPayloadSchema,
+  type ImportItem,
 } from "../domain/import/schema";
 import {
+  formatHistoricalRange,
   fromOrdinal,
+  fromPreciseOrdinal,
   parseHistoricalYearInput,
   toOrdinal,
 } from "../domain/timeline/historical-date";
@@ -15,8 +18,10 @@ import { createGoogleMapsUrl } from "../domain/timeline/location";
 import { createTimelineScale } from "../domain/timeline/time-scale";
 import { timelineItemUpdateSchema } from "../domain/timeline/update-schema";
 import { trackOrderUpdateSchema } from "../domain/timeline/track-order-schema";
+import { reorderVisibleTracks } from "../domain/timeline/track-order";
 import {
   createCenturyPhaseBands,
+  createTimelineTicks,
   createTimelineVisualItems,
   formatTimelineCursorLabel,
   getCenturyPhase,
@@ -49,6 +54,43 @@ test("converts BCE and CE without a year zero", () => {
   });
 });
 
+test("places exact months and days within their historical year", () => {
+  const july = toOrdinal({
+    year: 1969,
+    era: "CE",
+    month: 7,
+    day: 20,
+  });
+  const august = toOrdinal({
+    year: 1969,
+    era: "CE",
+    month: 8,
+    day: 1,
+  });
+
+  assert.ok(july > 1969 && july < august && august < 1970);
+  assert.deepEqual(fromPreciseOrdinal(july), {
+    year: 1969,
+    era: "CE",
+    month: 7,
+    day: 20,
+  });
+  assert.equal(
+    formatHistoricalRange({
+      start: {
+        year: 1969,
+        era: "CE",
+        month: 7,
+        day: 20,
+        precision: "exact",
+      },
+      end: null,
+      basis: "point",
+    }),
+    "1969년 7월 20일",
+  );
+});
+
 test("assigns overlap lanes deterministically", () => {
   const items = [
     { id: "c", start: 10, end: 20 },
@@ -62,6 +104,19 @@ test("assigns overlap lanes deterministically", () => {
     { id: "b", lane: 1 },
     { id: "c", lane: 2 },
   ]);
+});
+
+test("gives higher-importance events the first overlap lane", () => {
+  assert.deepEqual(
+    assignLanes([
+      { id: "detail", start: 10, end: 48, priority: 1 },
+      { id: "core", start: 10, end: 48, priority: 3 },
+    ]),
+    [
+      { id: "core", lane: 0 },
+      { id: "detail", lane: 1 },
+    ],
+  );
 });
 
 test("keeps compressed timeline coordinates monotonic", () => {
@@ -151,6 +206,27 @@ test("labels each century as early, middle, and late", () => {
   assert.equal(firstCenturyBce[0].startOrdinal, -99);
   assert.equal(formatTimelineCursorLabel(1546), "1546, 16C 중반");
   assert.equal(formatTimelineCursorLabel(-1445), "BCE 1446, 15C 중반");
+});
+
+test("adds subyear ticks and cursor dates at high zoom", () => {
+  const ticks = createTimelineTicks(
+    1969,
+    1970,
+    180,
+    (ordinal) => (ordinal - 1969) * 180,
+  );
+  assert.ok(ticks.some((tick) => tick.label === "1969 7월"));
+
+  const apollo = toOrdinal({
+    year: 1969,
+    era: "CE",
+    month: 7,
+    day: 20,
+  });
+  assert.equal(
+    formatTimelineCursorLabel(apollo, 180),
+    "1969년 7월 20일, 20C 후반",
+  );
 });
 
 test("places broad periods behind the narrower events they contain", () => {
@@ -270,6 +346,30 @@ test("requires a unique ordered list of Track keys", () => {
   assert.equal(
     trackOrderUpdateSchema.safeParse({ trackKeys: [] }).success,
     false,
+  );
+});
+
+test("reorders visible Tracks without moving hidden slots", () => {
+  const tracks = ["a", "hidden", "b", "c"].map((key, index) => ({
+    id: key,
+    key,
+    name: key,
+    parentKey: null,
+    order: index + 1,
+    color: "#000000",
+    visible: true,
+  }));
+
+  assert.deepEqual(
+    reorderVisibleTracks(tracks, ["a", "b", "c"], "c", "a").map(
+      (track) => [track.key, track.order],
+    ),
+    [
+      ["c", 1],
+      ["hidden", 2],
+      ["a", 3],
+      ["b", 4],
+    ],
   );
 });
 
@@ -452,6 +552,36 @@ test("rejects year zero and reversed import ranges", () => {
   const invalidLocation = payload();
   invalidLocation.items[0].location.latitude = 91;
   assert.equal(importPayloadSchema.safeParse(invalidLocation).success, false);
+
+  const reversedMonths = payload();
+  reversedMonths.items[0].time.start = {
+    year: 1900,
+    era: "CE",
+    month: 8,
+    day: 1,
+    precision: "exact",
+  };
+  reversedMonths.items[0].time.end = {
+    year: 1900,
+    era: "CE",
+    month: 7,
+    day: 31,
+    precision: "exact",
+  };
+  assert.equal(importPayloadSchema.safeParse(reversedMonths).success, false);
+
+  const invalidCalendarDay = payload();
+  invalidCalendarDay.items[0].time.start = {
+    year: 1900,
+    era: "CE",
+    month: 2,
+    day: 30,
+    precision: "exact",
+  };
+  assert.equal(
+    importPayloadSchema.safeParse(invalidCalendarDay).success,
+    false,
+  );
 });
 
 test("accepts exactly one item through the event registration contract", () => {
@@ -589,21 +719,18 @@ function timelineItem(id: string, start: number, end?: number): TimelineItem {
 }
 
 function payload() {
+  const time: ImportItem["time"] = {
+    start: { year: 1900, era: "CE", precision: "year" },
+    end: null,
+    basis: "point",
+  };
   return {
     schemaVersion: "1.0" as const,
     items: [
       {
         title: "Test item",
         type: "event" as const,
-        time: {
-          start: { year: 1900, era: "CE" as const, precision: "year" as const },
-          end: null as null | {
-            year: number;
-            era: "BCE" | "CE";
-            precision: "year";
-          },
-          basis: "point" as const,
-        },
+        time,
         trackKeys: ["world-history"],
         tags: [],
         importance: "core" as const,

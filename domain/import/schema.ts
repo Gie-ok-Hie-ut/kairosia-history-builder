@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { toOrdinal } from "../timeline/historical-date";
+import {
+  daysInHistoricalMonth,
+  toOrdinal,
+} from "../timeline/historical-date";
 
 const historicalInstantSchema = z
   .object({
@@ -18,6 +21,24 @@ const historicalInstantSchema = z
       context.addIssue({
         code: "custom",
         message: "월과 일은 precision이 exact일 때만 사용할 수 있습니다.",
+      });
+    }
+    if (value.day != null && value.month == null) {
+      context.addIssue({
+        code: "custom",
+        message: "일을 입력하려면 월도 입력해야 합니다.",
+        path: ["day"],
+      });
+    }
+    if (
+      value.month != null &&
+      value.day != null &&
+      value.day > daysInHistoricalMonth(value.year, value.era, value.month)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "선택한 월에 존재하지 않는 날짜입니다.",
+        path: ["day"],
       });
     }
   });
@@ -74,15 +95,18 @@ export const importItemSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (
-      value.time.end &&
-      toOrdinal(value.time.end) < toOrdinal(value.time.start)
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["time", "end"],
-        message: "종료 시점은 시작 시점보다 빠를 수 없습니다.",
-      });
+    if (value.time.end) {
+      try {
+        if (toOrdinal(value.time.end) < toOrdinal(value.time.start)) {
+          context.addIssue({
+            code: "custom",
+            path: ["time", "end"],
+            message: "종료 시점은 시작 시점보다 빠를 수 없습니다.",
+          });
+        }
+      } catch {
+        // The nested instant schema reports invalid calendar fields.
+      }
     }
 
     if (value.recordLevel === "standard") {

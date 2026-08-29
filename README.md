@@ -12,10 +12,11 @@
 
 Kairosia is designed to show **what was happening across different histories at the same time**, rather than presenting another isolated list of dates.
 
-1. Select tracks such as Korean, world, Christian and Israel, East Asian, European, or science history and compare them in one view. Drag a track handle to reorder every timeline column; the order is saved to Notion.
+1. Select visible columns from the **Tracks** menu, then drag their handles to reorder the timeline. The order is saved to Notion, while visibility remains a personal browser preference.
 2. Open an event to inspect its description, categories, sources, and location.
-3. Add one event with the direct form or paste schema-compliant JSON produced by ChatGPT.
-4. Only reviewed data is written to Notion, and the timeline renders that source data.
+3. Zoom through six levels. Exact month and day values occupy distinct positions within a year, with quarterly axis labels at the highest level.
+4. Add one event with the direct form or paste schema-compliant JSON produced by ChatGPT.
+5. Only reviewed data is written to Notion, and the timeline renders that source data.
 
 Notion remains the source of truth, so there is no separate database server to maintain. Editing, hiding, restoring, or deleting an event updates the connected Notion record.
 

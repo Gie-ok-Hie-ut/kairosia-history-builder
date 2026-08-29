@@ -1,5 +1,9 @@
 import { assignLanes } from "./lane-layout";
-import { fromOrdinal, getRangeOrdinals } from "./historical-date";
+import {
+  fromOrdinal,
+  fromPreciseOrdinal,
+  getRangeOrdinals,
+} from "./historical-date";
 import type { Era, TimelineItem, TimelineVisualItem } from "./types";
 
 export interface PositionedTimelineVisual {
@@ -64,7 +68,12 @@ export function positionTimelineVisualItems(
           visual.endOrdinal === visual.startOrdinal
             ? top + cardMinHeight
             : Math.max(top + cardMinHeight, position(visual.endOrdinal));
-        return { id: visual.visualId, start: top, end: bottom };
+        return {
+          id: visual.visualId,
+          start: top,
+          end: bottom,
+          priority: getTimelineImportanceRank(visual.item),
+        };
       });
     for (const result of assignLanes(trackItems, 7)) {
       laneById.set(result.id, result.lane);
@@ -103,18 +112,20 @@ export function createTimelineTicks(
   pixelsPerYear: number,
   position: (ordinal: number) => number,
 ) {
-  const step = pixelsPerYear >= 5 ? 10 : pixelsPerYear >= 3 ? 25 : 50;
+  const step = getTickStep(pixelsPerYear);
   const ticks: Array<{ ordinal: number; top: number; label: string }> = [];
   let lastTop = -Infinity;
+  const firstIndex = Math.ceil((start - 1e-9) / step);
 
-  for (let ordinal = roundUp(start, step); ordinal <= end; ordinal += step) {
+  for (let index = firstIndex; ; index += 1) {
+    const ordinal = normalizeOrdinal(index * step);
+    if (ordinal > end + 1e-9) break;
     const top = position(ordinal);
     if (top - lastTop < 34) continue;
-    const date = fromOrdinal(ordinal);
     ticks.push({
       ordinal,
       top,
-      label: date.era === "BCE" ? "BCE " + date.year : String(date.year),
+      label: formatTickLabel(ordinal, step),
     });
     lastTop = top;
   }
@@ -162,11 +173,11 @@ export function createCenturyPhaseBands(
 }
 
 export function getCenturyPhase(ordinal: number): CenturyPhase {
-  const rounded = Math.round(ordinal);
-  const date = fromOrdinal(rounded);
+  const wholeYear = Math.floor(ordinal);
+  const date = fromOrdinal(wholeYear);
   const century = Math.ceil(date.year / 100);
-  const centuryStart = Math.floor((rounded - 1) / 100) * 100 + 1;
-  const progress = rounded - centuryStart;
+  const centuryStart = Math.floor((wholeYear - 1) / 100) * 100 + 1;
+  const progress = wholeYear - centuryStart;
   const phase = progress < 33 ? "초반" : progress < 66 ? "중반" : "후반";
   const centuryLabel = date.era === "BCE" ? `BCE ${century}C` : `${century}C`;
   return {
@@ -177,12 +188,28 @@ export function getCenturyPhase(ordinal: number): CenturyPhase {
   };
 }
 
-export function formatTimelineCursorLabel(ordinal: number): string {
-  const rounded = Math.round(ordinal);
-  const date = fromOrdinal(rounded);
+export function formatTimelineCursorLabel(
+  ordinal: number,
+  pixelsPerYear = 0,
+): string {
+  const wholeYear = Math.floor(ordinal);
+  const date = fromOrdinal(wholeYear);
   const yearLabel = date.era === "BCE" ? `BCE ${date.year}` : String(date.year);
-  const century = getCenturyPhase(rounded);
-  return `${yearLabel}, ${century.century}C ${century.phase}`;
+  const precise = fromPreciseOrdinal(ordinal);
+  const preciseLabel =
+    pixelsPerYear >= 120
+      ? `${yearLabel}년 ${precise.month}월 ${precise.day}일`
+      : pixelsPerYear >= 40
+        ? `${yearLabel}년 ${precise.month}월`
+        : yearLabel;
+  const century = getCenturyPhase(wholeYear);
+  return `${preciseLabel}, ${century.century}C ${century.phase}`;
+}
+
+export function getTimelineImportanceRank(
+  item: Pick<TimelineItem, "importance">,
+) {
+  return item.importance === "core" ? 3 : item.importance === "major" ? 2 : 1;
 }
 
 function roundDown(value: number, step: number) {
@@ -191,4 +218,24 @@ function roundDown(value: number, step: number) {
 
 function roundUp(value: number, step: number) {
   return Math.ceil(value / step) * step;
+}
+
+function getTickStep(pixelsPerYear: number) {
+  const targetYears = 40 / pixelsPerYear;
+  const steps = [1 / 12, 1 / 6, 1 / 4, 1 / 2, 1, 2, 5, 10, 25, 50, 100];
+  return steps.find((step) => step >= targetYears) ?? 250;
+}
+
+function formatTickLabel(ordinal: number, step: number) {
+  if (step < 1) {
+    const date = fromPreciseOrdinal(ordinal);
+    const year = date.era === "BCE" ? `BCE ${date.year}` : String(date.year);
+    return `${year} ${date.month}월`;
+  }
+  const date = fromOrdinal(Math.round(ordinal));
+  return date.era === "BCE" ? "BCE " + date.year : String(date.year);
+}
+
+function normalizeOrdinal(value: number) {
+  return Math.round(value * 1_000_000_000) / 1_000_000_000;
 }

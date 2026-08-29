@@ -197,8 +197,13 @@ test("keeps domain and Notion concerns outside the page component", async () => 
   assert.match(workspace, /hidden-toggle/);
   assert.match(workspace, /visibleTimelineItems/);
   assert.match(workspace, /TrackFilters/);
+  assert.match(workspace, /TrackVisibilityMenu/);
+  assert.match(workspace, /track-toolbar-row/);
+  assert.match(workspace, /\[2\.2, 4, 8, 20, 60, 180\]/);
   assert.match(trackFilters, /DndContext/);
   assert.match(trackFilters, /SortableContext/);
+  assert.match(trackFilters, /track-menu-popover/);
+  assert.match(trackFilters, /reorderVisibleTracks/);
   assert.match(trackFilters, /\/api\/admin\/tracks\/order/);
   assert.match(repository, /Failed to roll back a Notion Track order/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

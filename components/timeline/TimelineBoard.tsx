@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { EyeOff } from "lucide-react";
 import { formatHistoricalRange } from "@/domain/timeline/historical-date";
 import {
@@ -13,6 +20,7 @@ import {
   createTimelineTicks,
   createTimelineVisualItems,
   formatTimelineCursorLabel,
+  getTimelineImportanceRank,
   getTimelineBounds,
   positionTimelineVisualItems,
 } from "@/domain/timeline/visual-layout";
@@ -66,9 +74,31 @@ export function TimelineBoard({
         pixelsPerYear,
         mode,
         items: scaleVisualItems,
+        gapThreshold: Math.min(36, Math.max(1, 160 / pixelsPerYear)),
+        anchorPaddingYears: Math.min(
+          7,
+          Math.max(0.25, 48 / pixelsPerYear),
+        ),
       }),
     [bounds, mode, pixelsPerYear, scaleVisualItems],
   );
+  const previousScaleRef = useRef(scale);
+
+  useLayoutEffect(() => {
+    const previousScale = previousScaleRef.current;
+    previousScaleRef.current = scale;
+    const node = scrollRef.current;
+    if (!node || previousScale === scale) return;
+
+    const bodyCenter =
+      Math.max(0, node.scrollTop - HEADER_HEIGHT) + node.clientHeight / 2;
+    const centerOrdinal = previousScale.ordinalAt(bodyCenter);
+    node.scrollTop = Math.max(
+      0,
+      scale.position(centerOrdinal) + HEADER_HEIGHT - node.clientHeight / 2,
+    );
+    setViewport({ top: node.scrollTop, height: node.clientHeight });
+  }, [scale]);
 
   useEffect(() => {
     if (!jumpTarget || !scrollRef.current) return;
@@ -135,11 +165,17 @@ export function TimelineBoard({
           ({ top, height }) =>
             top + height >= visibleRange.start && top <= visibleRange.end,
         )
-        .sort(
-          (left, right) =>
-            right.visual.endOrdinal - right.visual.startOrdinal -
-            (left.visual.endOrdinal - left.visual.startOrdinal),
-        ),
+        .sort((left, right) => {
+          const durationDifference =
+            right.visual.endOrdinal -
+            right.visual.startOrdinal -
+            (left.visual.endOrdinal - left.visual.startOrdinal);
+          if (durationDifference !== 0) return durationDifference;
+          return (
+            getTimelineImportanceRank(left.visual.item) -
+            getTimelineImportanceRank(right.visual.item)
+          );
+        }),
     [positioned, visibleRange],
   );
   const visibleTicks = useMemo(
@@ -192,7 +228,7 @@ export function TimelineBoard({
     guide.style.setProperty("--hover-x", `${left}px`);
     guide.style.transform = `translateY(${top}px)`;
     guide.classList.add("is-visible");
-    label.textContent = formatTimelineCursorLabel(ordinal);
+    label.textContent = formatTimelineCursorLabel(ordinal, pixelsPerYear);
   }
 
   function hideHoverGuide() {
@@ -261,7 +297,7 @@ export function TimelineBoard({
                   }}
                 >
                   <span>
-                    {segment.end - segment.start}년 압축 구간
+                    {formatCompressedYears(segment.end - segment.start)}년 압축 구간
                   </span>
                 </div>
               ))}
@@ -304,7 +340,7 @@ export function TimelineBoard({
               const trackIndex = tracks.findIndex(
                 (track) => track.key === visual.trackKey,
               );
-              const laneOffset = Math.min(lane, 4) * 16;
+              const laneOffset = Math.min(lane, 10) * 10;
               const track = tracks[trackIndex];
               return (
                 <button
@@ -351,4 +387,8 @@ export function TimelineBoard({
       </div>
     </div>
   );
+}
+
+function formatCompressedYears(years: number) {
+  return years >= 10 ? String(Math.round(years)) : years.toFixed(1);
 }

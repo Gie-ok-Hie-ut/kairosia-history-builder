@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   closestCenter,
   DndContext,
@@ -11,20 +11,19 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   horizontalListSortingStrategy,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { ChevronDown, GripVertical, Layers3 } from "lucide-react";
+import { reorderVisibleTracks } from "@/domain/timeline/track-order";
 import type { TimelineTrack } from "@/domain/timeline/types";
 
 interface TrackFiltersProps {
   activeTrackKeys: string[];
   onOrderChange: (tracks: TimelineTrack[]) => void;
-  onToggle: (track: TimelineTrack) => void;
   reorderEnabled: boolean;
   tracks: TimelineTrack[];
 }
@@ -32,7 +31,6 @@ interface TrackFiltersProps {
 export function TrackFilters({
   activeTrackKeys,
   onOrderChange,
-  onToggle,
   reorderEnabled,
   tracks,
 }: TrackFiltersProps) {
@@ -45,6 +43,8 @@ export function TrackFilters({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+  const activeKeySet = new Set(activeTrackKeys);
+  const visibleTracks = tracks.filter((track) => activeKeySet.has(track.key));
 
   async function handleDragEnd(event: DragEndEvent) {
     if (
@@ -56,19 +56,13 @@ export function TrackFilters({
       return;
     }
 
-    const oldIndex = tracks.findIndex(
-      (track) => track.key === String(event.active.id),
-    );
-    const newIndex = tracks.findIndex(
-      (track) => track.key === String(event.over?.id),
-    );
-    if (oldIndex < 0 || newIndex < 0) return;
-
     const previous = tracks;
-    const next = arrayMove(previous, oldIndex, newIndex).map((track, index) => ({
-      ...track,
-      order: index + 1,
-    }));
+    const next = reorderVisibleTracks(
+      tracks,
+      activeTrackKeys,
+      String(event.active.id),
+      String(event.over.id),
+    );
     savingRef.current = true;
     setSaving(true);
     setError("");
@@ -108,21 +102,15 @@ export function TrackFilters({
         sensors={sensors}
       >
         <SortableContext
-          items={tracks.map((track) => track.key)}
+          items={visibleTracks.map((track) => track.key)}
           strategy={horizontalListSortingStrategy}
         >
-          {tracks.map((track) => (
+          {visibleTracks.map((track) => (
             <SortableTrackFilter
-              active={activeTrackKeys.includes(track.key)}
               dragDisabled={saving}
               dragError={error}
               key={track.key}
-              onToggle={() => onToggle(track)}
               reorderEnabled={reorderEnabled}
-              toggleDisabled={
-                activeTrackKeys.includes(track.key) &&
-                activeTrackKeys.length === 1
-              }
               track={track}
             />
           ))}
@@ -135,23 +123,123 @@ export function TrackFilters({
   );
 }
 
+interface TrackVisibilityMenuProps {
+  activeTrackKeys: string[];
+  onChange: (trackKeys: string[]) => void;
+  tracks: TimelineTrack[];
+}
+
+export function TrackVisibilityMenu({
+  activeTrackKeys,
+  onChange,
+  tracks,
+}: TrackVisibilityMenuProps) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !menuRef.current?.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  function toggleTrack(trackKey: string) {
+    if (activeTrackKeys.includes(trackKey)) {
+      if (activeTrackKeys.length === 1) return;
+      onChange(activeTrackKeys.filter((key) => key !== trackKey));
+      return;
+    }
+    onChange(
+      tracks
+        .filter(
+          (track) =>
+            activeTrackKeys.includes(track.key) || track.key === trackKey,
+        )
+        .map((track) => track.key),
+    );
+  }
+
+  return (
+    <div className="track-visibility-menu" ref={menuRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        className={"track-menu-trigger" + (open ? " is-open" : "")}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <Layers3 aria-hidden="true" size={15} />
+        <span>트랙</span>
+        <small>
+          {activeTrackKeys.length}/{tracks.length}
+        </small>
+        <ChevronDown aria-hidden="true" size={13} />
+      </button>
+
+      {open ? (
+        <div aria-label="트랙 표시 설정" className="track-menu-popover" role="dialog">
+          <div className="track-menu-head">
+            <strong>표시할 트랙</strong>
+            <button
+              disabled={activeTrackKeys.length === tracks.length}
+              onClick={() => onChange(tracks.map((track) => track.key))}
+              type="button"
+            >
+              전체 표시
+            </button>
+          </div>
+          <div className="track-menu-options">
+            {tracks.map((track) => {
+              const active = activeTrackKeys.includes(track.key);
+              return (
+                <label key={track.key} title={track.description || track.name}>
+                  <input
+                    checked={active}
+                    disabled={active && activeTrackKeys.length === 1}
+                    onChange={() => toggleTrack(track.key)}
+                    type="checkbox"
+                  />
+                  <i style={{ backgroundColor: track.color }} />
+                  <span>{track.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 interface SortableTrackFilterProps {
-  active: boolean;
   dragDisabled: boolean;
   dragError: string;
-  onToggle: () => void;
   reorderEnabled: boolean;
-  toggleDisabled: boolean;
   track: TimelineTrack;
 }
 
 function SortableTrackFilter({
-  active,
   dragDisabled,
   dragError,
-  onToggle,
   reorderEnabled,
-  toggleDisabled,
   track,
 }: SortableTrackFilterProps) {
   const {
@@ -193,16 +281,10 @@ function SortableTrackFilter({
           <GripVertical aria-hidden="true" size={13} />
         </button>
       ) : null}
-      <label title={track.description || track.name}>
-        <input
-          checked={active}
-          disabled={toggleDisabled}
-          onChange={onToggle}
-          type="checkbox"
-        />
+      <div className="track-chip-content" title={track.description || track.name}>
         <i style={{ backgroundColor: track.color }} />
         <span>{track.name}</span>
-      </label>
+      </div>
     </div>
   );
 }

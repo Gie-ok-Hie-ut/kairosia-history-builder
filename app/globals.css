@@ -136,6 +136,7 @@ a:focus-visible {
 .header-actions,
 .header-actions > *,
 .workspace-toolbar,
+.track-toolbar-row,
 .mode-control,
 .year-jump,
 .zoom-control,
@@ -198,6 +199,17 @@ a:focus-visible {
   border-bottom: 1px solid var(--line);
   background: #f9fafa;
   padding: 7px 12px;
+}
+
+.track-toolbar-row {
+  position: relative;
+  z-index: 24;
+  height: 42px;
+  flex: 0 0 42px;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  background: #f4f6f6;
+  padding: 4px 12px;
 }
 
 .search-field {
@@ -314,12 +326,11 @@ a:focus-visible {
   box-shadow: 0 4px 12px rgb(24 33 38 / 18%);
 }
 
-.track-order-item label {
+.track-chip-content {
   display: flex;
   height: 28px;
   align-items: center;
   gap: 5px;
-  cursor: pointer;
   padding: 0 7px 0 5px;
   font-size: 10px;
   font-weight: 650;
@@ -359,26 +370,147 @@ a:focus-visible {
   color: var(--danger);
 }
 
-.toolbar-track-filters input {
-  width: 13px;
-  height: 13px;
-  margin: 0;
-  accent-color: var(--accent);
-}
-
-.toolbar-track-filters input:disabled {
-  cursor: not-allowed;
-}
-
 .toolbar-track-filters i {
   width: 3px;
   height: 14px;
   border-radius: 2px;
 }
 
-.hidden-toggle {
-  position: sticky;
+.track-visibility-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.track-menu-trigger {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  cursor: pointer;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.track-menu-trigger:hover,
+.track-menu-trigger.is-open {
+  border-color: #7e9fad;
+  background: #edf5f7;
+  color: #1f647d;
+}
+
+.track-menu-trigger small {
+  min-width: 27px;
+  border-radius: 3px;
+  background: var(--surface-muted);
+  padding: 2px 4px;
+  color: var(--faint);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.track-menu-popover {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 5px);
   left: 0;
+  width: 240px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 12px 30px rgb(24 33 38 / 18%);
+}
+
+.track-menu-head {
+  display: flex;
+  height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 0 8px 0 11px;
+}
+
+.track-menu-head strong {
+  font-size: 10px;
+}
+
+.track-menu-head button {
+  height: 26px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 6px;
+  color: #1f647d;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.track-menu-head button:hover:not(:disabled) {
+  background: #edf5f7;
+}
+
+.track-menu-head button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.track-menu-options {
+  max-height: min(360px, 52vh);
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.track-menu-options label {
+  display: grid;
+  min-height: 34px;
+  align-items: center;
+  border-radius: 4px;
+  cursor: pointer;
+  grid-template-columns: 14px 4px minmax(0, 1fr);
+  gap: 8px;
+  padding: 0 7px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.track-menu-options label:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.track-menu-options input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.track-menu-options input:disabled {
+  cursor: not-allowed;
+}
+
+.track-menu-options i {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+}
+
+.track-menu-options span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hidden-toggle {
+  position: relative;
   z-index: 2;
   display: grid;
   width: 30px;
@@ -2151,12 +2283,6 @@ a:focus-visible {
 
   .zoom-control {
     margin-left: 0;
-  }
-
-  .toolbar-track-filters {
-    order: 5;
-    width: 100%;
-    flex-basis: 100%;
   }
 
   .workspace-grid {

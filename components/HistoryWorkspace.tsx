@@ -20,21 +20,23 @@ import type { TimelineItemUpdate } from "@/domain/timeline/update-schema";
 import type {
   TimelineDataset,
   TimelineItem,
-  TimelineTrack,
   TimelineVisibility,
 } from "@/domain/timeline/types";
 import { ImportPanel } from "@/components/import/ImportPanel";
 import { DetailPanel } from "@/components/timeline/DetailPanel";
 import { TimelineBoard } from "@/components/timeline/TimelineBoard";
-import { TrackFilters } from "@/components/toolbar/TrackFilters";
+import {
+  TrackFilters,
+  TrackVisibilityMenu,
+} from "@/components/toolbar/TrackFilters";
 
 interface HistoryWorkspaceProps {
   dataset: TimelineDataset;
 }
 
-const ZOOM_LEVELS = [2.2, 3.4, 5.2];
+const ZOOM_LEVELS = [2.2, 4, 8, 20, 60, 180];
 const VIEW_STORAGE_KEY = "braided-history:view";
-const VIEW_STORAGE_VERSION = 2;
+const VIEW_STORAGE_VERSION = 3;
 
 export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
   const initialRootTracks = useMemo(
@@ -78,6 +80,7 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
       try {
         const value = JSON.parse(saved) as {
           activeTrackKeys?: string[];
+          knownTrackKeys?: string[];
           mode?: TimelineMode;
           zoomIndex?: number;
           version?: number;
@@ -85,7 +88,17 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
         if (value.activeTrackKeys?.length) {
           const known = new Set(initialRootTracks.map((track) => track.key));
           const valid = value.activeTrackKeys.filter((key) => known.has(key));
-          if (valid.length) setActiveTrackKeys(valid);
+          if (value.version === VIEW_STORAGE_VERSION) {
+            const previouslyKnown = new Set(value.knownTrackKeys ?? []);
+            valid.push(
+              ...initialRootTracks
+                .filter(
+                  (track) => track.visible && !previouslyKnown.has(track.key),
+                )
+                .map((track) => track.key),
+            );
+          }
+          if (valid.length) setActiveTrackKeys([...new Set(valid)]);
         }
         if (
           value.version === VIEW_STORAGE_VERSION &&
@@ -116,12 +129,13 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
       VIEW_STORAGE_KEY,
       JSON.stringify({
         activeTrackKeys,
+        knownTrackKeys: initialRootTracks.map((track) => track.key),
         mode,
         version: VIEW_STORAGE_VERSION,
         zoomIndex,
       }),
     );
-  }, [activeTrackKeys, mode, viewRestored, zoomIndex]);
+  }, [activeTrackKeys, initialRootTracks, mode, viewRestored, zoomIndex]);
 
   const activeTracks = rootTracks.filter((track) =>
     activeTrackKeys.includes(track.key),
@@ -144,16 +158,6 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
       item.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery))
     );
   });
-
-  function toggleTrack(track: TimelineTrack) {
-    setActiveTrackKeys((current) => {
-      if (current.includes(track.key)) {
-        if (current.length === 1) return current;
-        return current.filter((key) => key !== track.key);
-      }
-      return [...current, track.key];
-    });
-  }
 
   function jumpToYear() {
     const parsed = parseHistoricalYearInput(yearInput);
@@ -418,42 +422,6 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
           </button>
         </div>
 
-        <div className="toolbar-track-filters" aria-label="표시할 역사 분야">
-          {dataset.source === "notion" ? (
-            <button
-              aria-label={showHidden ? "숨긴 사건 감추기" : "숨긴 사건 보기"}
-              aria-pressed={showHidden}
-              className={
-                "hidden-toggle" +
-                (showHidden ? " is-active" : "") +
-                (hiddenError ? " has-error" : "")
-              }
-              disabled={hiddenLoading}
-              onClick={toggleHiddenItems}
-              title={
-                hiddenError ||
-                (showHidden ? "숨긴 사건 감추기" : "숨긴 사건 모두 보기")
-              }
-              type="button"
-            >
-              {hiddenLoading ? (
-                <LoaderCircle className="spin" size={15} />
-              ) : showHidden ? (
-                <Eye size={15} />
-              ) : (
-                <EyeOff size={15} />
-              )}
-            </button>
-          ) : null}
-          <TrackFilters
-            activeTrackKeys={activeTrackKeys}
-            onOrderChange={setRootTracks}
-            onToggle={toggleTrack}
-            reorderEnabled={dataset.source === "notion"}
-            tracks={rootTracks}
-          />
-        </div>
-
         <div className="zoom-control">
           <button
             aria-label="축소"
@@ -464,7 +432,9 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
           >
             <ZoomOut size={16} />
           </button>
-          <span>{zoomIndex + 1}/3</span>
+          <span title={`${ZOOM_LEVELS[zoomIndex]}px/년`}>
+            {zoomIndex + 1}/{ZOOM_LEVELS.length}
+          </span>
           <button
             aria-label="확대"
             disabled={zoomIndex === ZOOM_LEVELS.length - 1}
@@ -478,6 +448,48 @@ export function HistoryWorkspace({ dataset }: HistoryWorkspaceProps) {
           >
             <ZoomIn size={16} />
           </button>
+        </div>
+      </div>
+
+      <div className="track-toolbar-row">
+        <TrackVisibilityMenu
+          activeTrackKeys={activeTrackKeys}
+          onChange={setActiveTrackKeys}
+          tracks={rootTracks}
+        />
+        {dataset.source === "notion" ? (
+          <button
+            aria-label={showHidden ? "숨긴 사건 감추기" : "숨긴 사건 보기"}
+            aria-pressed={showHidden}
+            className={
+              "hidden-toggle" +
+              (showHidden ? " is-active" : "") +
+              (hiddenError ? " has-error" : "")
+            }
+            disabled={hiddenLoading}
+            onClick={toggleHiddenItems}
+            title={
+              hiddenError ||
+              (showHidden ? "숨긴 사건 감추기" : "숨긴 사건 모두 보기")
+            }
+            type="button"
+          >
+            {hiddenLoading ? (
+              <LoaderCircle className="spin" size={15} />
+            ) : showHidden ? (
+              <Eye size={15} />
+            ) : (
+              <EyeOff size={15} />
+            )}
+          </button>
+        ) : null}
+        <div className="toolbar-track-filters" aria-label="표시 중인 역사 분야">
+          <TrackFilters
+            activeTrackKeys={activeTrackKeys}
+            onOrderChange={setRootTracks}
+            reorderEnabled={dataset.source === "notion"}
+            tracks={rootTracks}
+          />
         </div>
       </div>
 
