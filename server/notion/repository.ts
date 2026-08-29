@@ -105,6 +105,13 @@ export interface NotionTrackInput {
   description: string;
 }
 
+export class DuplicateNotionItemError extends Error {
+  constructor() {
+    super("동일한 JSON 항목이 이미 Notion에 등록되어 있습니다.");
+    this.name = "DuplicateNotionItemError";
+  }
+}
+
 export async function upsertNotionTrack(
   input: NotionTrackInput,
 ): Promise<TimelineTrack> {
@@ -115,14 +122,7 @@ export async function upsertNotionTrack(
       page_size: 1,
     },
   );
-  const properties = {
-    Name: { title: richText(input.name) },
-    Key: { rich_text: richText(input.key) },
-    Order: { number: input.order },
-    Color: { select: { name: input.color } },
-    Visible: { checkbox: input.visible },
-    Description: { rich_text: richText(input.description) },
-  };
+  const properties = notionTrackProperties(input);
   const page = existing[0]
     ? await notionRequest<NotionPage>("/pages/" + existing[0].id, {
         method: "PATCH",
@@ -139,6 +139,57 @@ export async function upsertNotionTrack(
         }),
       });
   return mapTrackPage(page);
+}
+
+export interface NotionTrackMigrationResult {
+  track: TimelineTrack;
+  relationsUpdated: number;
+  sourceRemoved: boolean;
+}
+
+export async function migrateNotionTrack(
+  sourceKey: string,
+  target: NotionTrackInput,
+): Promise<NotionTrackMigrationResult> {
+  const tracks = await listTracks();
+  const source = tracks.find((track) => track.key === sourceKey);
+  const existingTarget = tracks.find((track) => track.key === target.key);
+
+  if (!source || source.id === existingTarget?.id) {
+    return {
+      track: await upsertNotionTrack(target),
+      relationsUpdated: 0,
+      sourceRemoved: false,
+    };
+  }
+
+  if (!existingTarget) {
+    const page = await notionRequest<NotionPage>("/pages/" + source.id, {
+      method: "PATCH",
+      body: JSON.stringify({ properties: notionTrackProperties(target) }),
+    });
+    return {
+      track: mapTrackPage(page),
+      relationsUpdated: 0,
+      sourceRemoved: false,
+    };
+  }
+
+  const track = await upsertNotionTrack(target);
+  const relationsUpdated = await replaceNotionTrackRelations(
+    source.id,
+    track.id,
+  );
+  await notionRequest<NotionPage>("/pages/" + source.id, {
+    method: "PATCH",
+    body: JSON.stringify({ in_trash: true }),
+  });
+
+  return {
+    track,
+    relationsUpdated,
+    sourceRemoved: true,
+  };
 }
 
 export async function trashNotionItem(id: string): Promise<void> {
@@ -297,7 +348,7 @@ export async function commitNotionItem(
 ): Promise<TimelineItem> {
   const existing = await findPageByFingerprint(fingerprint);
   if (existing) {
-    throw new Error("동일한 JSON 항목이 이미 Notion에 등록되어 있습니다.");
+    throw new DuplicateNotionItemError();
   }
 
   const tracks = await listTracks();
@@ -418,6 +469,51 @@ async function listTracks(): Promise<TimelineTrack[]> {
     valid.map((entry) => entry.page),
     valid.map((entry) => entry.track),
   ).sort((a, b) => a.order - b.order);
+}
+
+async function replaceNotionTrackRelations(
+  sourceTrackId: string,
+  targetTrackId: string,
+): Promise<number> {
+  const pages = await queryDataSource(
+    requiredEnv("NOTION_ITEMS_DATA_SOURCE_ID"),
+    {
+      filter: {
+        property: "Tracks",
+        relation: { contains: sourceTrackId },
+      },
+      page_size: 100,
+    },
+  );
+
+  for (const page of pages) {
+    const relationIds = readRelations(page.properties.Tracks).map((id) =>
+      id === sourceTrackId ? targetTrackId : id,
+    );
+    await notionRequest<NotionPage>("/pages/" + page.id, {
+      method: "PATCH",
+      body: JSON.stringify({
+        properties: {
+          Tracks: {
+            relation: [...new Set(relationIds)].map((id) => ({ id })),
+          },
+        },
+      }),
+    });
+  }
+
+  return pages.length;
+}
+
+function notionTrackProperties(input: NotionTrackInput) {
+  return {
+    Name: { title: richText(input.name) },
+    Key: { rich_text: richText(input.key) },
+    Order: { number: input.order },
+    Color: { select: { name: input.color } },
+    Visible: { checkbox: input.visible },
+    Description: { rich_text: richText(input.description) },
+  };
 }
 
 async function queryDataSource(

@@ -6,13 +6,13 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Gie-ok-Hie-ut/kairosia-history-builder)
 
-![한국사, 세계사, 기독교사, 일본사, 미국사와 철학사를 비교하는 Kairosia 연표](./docs/images/timeline-overview.png)
+![한국사, 세계사, 기독교·이스라엘사, 동아시아사, 유럽사 등을 비교하는 Kairosia 연표](./docs/images/timeline-overview.png)
 
 ## 한눈에 보기
 
 Kairosia는 연도가 적힌 사건 목록이 아니라, **서로 다른 역사가 같은 시기에 어떻게 겹쳤는지** 보기 위한 도구입니다.
 
-1. 한국사·세계사·기독교사·과학사 같은 Track을 골라 한 화면에서 비교합니다.
+1. 한국사·세계사·기독교·이스라엘사·동아시아사·유럽사 같은 Track을 골라 한 화면에서 비교합니다.
 2. 사건을 누르면 설명, 분류, 출처와 발생 위치를 확인합니다.
 3. 새 사건을 직접 입력하거나 ChatGPT가 만든 약속된 JSON을 붙여넣습니다.
 4. 확인된 데이터만 Notion에 저장되고, 연표는 그 내용을 다시 읽어 표시합니다.
@@ -87,7 +87,7 @@ Notion에 전체 페이지 데이터베이스 두 개를 만들고 이름을 각
 | `Visible` | Checkbox |
 | `Description` | Rich text |
 
-`Color`에는 `teal`, `blue`, `amber`, `red`, `violet`, `green`, `gray` 또는 CSS 색상 문자열을 사용합니다.
+`Color`에는 `teal`, `blue`, `amber`, `red`, `purple`, `violet`, `green`, `gray` 또는 CSS 색상 문자열을 사용합니다.
 
 </details>
 
@@ -197,13 +197,13 @@ npm run deploy:local
 
 ## 선택 사항
 
-미국사, 중국사, 이스라엘·성경사, 철학사, 과학사의 기본 Track과 핵심 사건을 넣을 수 있습니다.
+한국사 시대 골격과 기독교·이스라엘사, 동아시아사, 유럽사, 미국사, 중국사, 철학사, 과학사의 핵심 사건을 넣을 수 있습니다.
 
 ```bash
 npm run seed:core
 ```
 
-이스라엘·성경사 데이터는 복음주의 개신교의 정경 서사와 전통적 연대를 기준으로 하며, 논쟁적인 연대는 `disputed`로 표시합니다.
+기존 `일본사` Track은 `동아시아사`로 전환되고, `이스라엘사`는 `기독교·이스라엘사`로 관계가 통합됩니다. 성경사 데이터는 복음주의 개신교의 정경 서사와 전통적 연대를 기준으로 하며, 논쟁적인 연대는 `disputed`로 표시합니다.
 
 ## 개발과 검증
 

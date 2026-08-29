@@ -2,7 +2,10 @@ import type { ImportPayload } from "@/domain/import/schema";
 import type { TimelineItem } from "@/domain/timeline/types";
 import { invalidateTimelineCache } from "@/server/cache/timeline-cache";
 import { isNotionConfigured } from "@/server/notion/client";
-import { commitNotionItem } from "@/server/notion/repository";
+import {
+  commitNotionItem,
+  DuplicateNotionItemError,
+} from "@/server/notion/repository";
 import { previewImport } from "./preview-import";
 
 export interface CommitResult {
@@ -43,6 +46,14 @@ export async function commitImport(input: unknown): Promise<CommitResult> {
       );
       results.push({ index: candidate.index, status: "published", item });
     } catch (error) {
+      if (error instanceof DuplicateNotionItemError) {
+        results.push({
+          index: candidate.index,
+          status: "duplicate",
+          message: error.message,
+        });
+        continue;
+      }
       results.push({
         index: candidate.index,
         status: "failed",

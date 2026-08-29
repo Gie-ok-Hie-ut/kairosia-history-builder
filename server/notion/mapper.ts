@@ -202,6 +202,7 @@ function mapTrackColor(value: string) {
     blue: "#2563eb",
     amber: "#b45309",
     red: "#b91c1c",
+    purple: "#7e22ce",
     violet: "#6d28d9",
     green: "#15803d",
     gray: "#4b5563",

@@ -6,13 +6,13 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Gie-ok-Hie-ut/kairosia-history-builder)
 
-![Kairosia timeline comparing Korean, world, Christian, Japanese, American, and philosophy history](./docs/images/timeline-overview.png)
+![Kairosia timeline comparing Korean, world, Christian and Israel, East Asian, European, and other histories](./docs/images/timeline-overview.png)
 
 ## At a glance
 
 Kairosia is designed to show **what was happening across different histories at the same time**, rather than presenting another isolated list of dates.
 
-1. Select tracks such as Korean, world, Christian, philosophy, or science history and compare them in one view.
+1. Select tracks such as Korean, world, Christian and Israel, East Asian, European, or science history and compare them in one view.
 2. Open an event to inspect its description, categories, sources, and location.
 3. Add one event with the direct form or paste schema-compliant JSON produced by ChatGPT.
 4. Only reviewed data is written to Notion, and the timeline renders that source data.
@@ -85,7 +85,7 @@ Create two full-page Notion databases named `Tracks` and `Timeline Items`. Prope
 | `Visible` | Checkbox |
 | `Description` | Rich text |
 
-Use `teal`, `blue`, `amber`, `red`, `violet`, `green`, `gray`, or a CSS color string for `Color`.
+Use `teal`, `blue`, `amber`, `red`, `purple`, `violet`, `green`, `gray`, or a CSS color string for `Color`.
 
 </details>
 
@@ -195,13 +195,13 @@ npm run deploy:local
 
 ## Optional core dataset
 
-Seed American, Chinese, Israel/Biblical, philosophy, and science history tracks and selected events:
+Seed the broad Korean chronology and selected events for Christian and Israel, East Asian, European, American, Chinese, philosophy, and science history:
 
 ```bash
 npm run seed:core
 ```
 
-The Israel/Biblical dataset follows an evangelical Protestant canonical narrative and traditional chronology. Disputed dates are marked as `disputed`.
+The command migrates an existing `Japanese history` track to `East Asian history` and merges `Israel history` into `Christian and Israel history`. Biblical data follows an evangelical Protestant canonical narrative and traditional chronology. Disputed dates are marked as `disputed`.
 
 ## Development
 
