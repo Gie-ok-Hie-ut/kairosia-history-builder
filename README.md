@@ -1,166 +1,164 @@
 # Kairosia: HistoryBuilder
 
-> Notion에 기록한 여러 분야의 역사를 하나의 시간축에서 비교하고, 직접 또는 JSON으로 사건을 계속 쌓아가는 개인 역사 지도입니다.
+> A personal history map that compares multiple fields on one timeline and lets you keep building the dataset in Notion, either manually or with reviewed JSON.
 
-[English](./README.en.md) · [기획 문서](./BRAIDED_HISTORY_PLAN.md) · [MIT License](./LICENSE)
+[한국어](./README.ko.md) · [Planning document](./BRAIDED_HISTORY_PLAN.md) · [MIT License](./LICENSE)
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Gie-ok-Hie-ut/kairosia-history-builder)
 
-![한국사, 세계사, 기독교·이스라엘사, 동아시아사, 유럽사 등을 비교하는 Kairosia 연표](./docs/images/timeline-overview.png)
+![Kairosia timeline comparing Korean, world, Christian and Israel, East Asian, European, and other histories](./docs/images/timeline-overview.png)
 
-## 한눈에 보기
+## At a glance
 
-Kairosia는 연도가 적힌 사건 목록이 아니라, **서로 다른 역사가 같은 시기에 어떻게 겹쳤는지** 보기 위한 도구입니다.
+Kairosia is designed to show **what was happening across different histories at the same time**, rather than presenting another isolated list of dates.
 
-1. 한국사·세계사·기독교·이스라엘사·동아시아사·유럽사 같은 Track을 골라 한 화면에서 비교합니다.
-2. 사건을 누르면 설명, 분류, 출처와 발생 위치를 확인합니다.
-3. 새 사건을 직접 입력하거나 ChatGPT가 만든 약속된 JSON을 붙여넣습니다.
-4. 확인된 데이터만 Notion에 저장되고, 연표는 그 내용을 다시 읽어 표시합니다.
+1. Select tracks such as Korean, world, Christian and Israel, East Asian, European, or science history and compare them in one view.
+2. Open an event to inspect its description, categories, sources, and location.
+3. Add one event with the direct form or paste schema-compliant JSON produced by ChatGPT.
+4. Only reviewed data is written to Notion, and the timeline renders that source data.
 
-Notion이 원본 데이터이므로 별도의 데이터베이스 서버를 운영할 필요가 없습니다. 사건을 편집하거나 숨기고 삭제하면 연결된 Notion에도 같은 변경이 반영됩니다.
+Notion remains the source of truth, so there is no separate database server to maintain. Editing, hiding, restoring, or deleting an event updates the connected Notion record.
 
-## 사건 등록
+## Registering an event
 
-![직접 입력 폼과 JSON 편집기가 함께 보이는 사건 등록 화면](./docs/images/event-registration.png)
+![Event registration with the direct form and JSON editor shown together](./docs/images/event-registration.png)
 
-왼쪽 직접 입력 폼과 오른쪽 JSON 편집기는 **같은 사건 하나**를 실시간으로 공유합니다. 직접 입력하면 JSON이 바뀌고, 유효한 JSON을 붙여넣으면 폼이 바뀝니다. 중복과 스키마 오류를 확인한 뒤 **Notion에 등록**을 누릅니다.
+The direct form and JSON editor represent **the same single event**. Form changes are serialized to JSON immediately; valid JSON updates the form. Review schema and duplicate warnings, then select **Register in Notion**.
 
-ChatGPT와 Kairosia가 직접 연결되는 구조는 아닙니다. ChatGPT에는 [`Schema 1.0`](./domain/import/schema.ts)에 맞는 사건 하나를 요청하고, 사용자가 내용을 검토해 JSON 편집기에 붙여넣습니다. 따라서 AI가 임의로 Notion을 수정하지 않습니다.
+ChatGPT is not directly connected to Kairosia. Ask it for one event matching [`Schema 1.0`](./domain/import/schema.ts), review the result, and paste it into the editor. This prevents an AI service from changing Notion without your approval.
 
-## 전체 구조
+## Architecture
 
 ```mermaid
 flowchart LR
-    G["GitHub<br/>코드 · Fork · 업데이트"] -->|빌드·배포| C["Cloudflare Worker<br/>웹앱 · 서버 API"]
-    U["사용자 브라우저"] --> A["Cloudflare Access<br/>로그인 보호"]
+    G["GitHub<br/>Code · Fork · updates"] -->|Build and deploy| C["Cloudflare Worker<br/>Web app · server API"]
+    U["User browser"] --> A["Cloudflare Access<br/>Sign-in protection"]
     A --> C
-    C <-->|조회·등록·편집| N["Notion<br/>Tracks + Timeline Items"]
-    H["ChatGPT<br/>Schema 1.0 JSON"] -->|사용자가 검토·붙여넣기| U
+    C <-->|Read and write| N["Notion<br/>Tracks + Timeline Items"]
+    H["ChatGPT<br/>Schema 1.0 JSON"] -->|User reviews and pastes| U
 ```
 
-| 구성 | 맡는 역할 | 필요한 이유 |
+| Service | Responsibility | Why it is needed |
 |---|---|---|
-| **Notion** | Track과 사건의 원본 저장 | 익숙한 화면에서 데이터를 직접 확인하고 관리하기 위해 |
-| **Cloudflare Workers** | 웹앱 실행, Notion API 호출, secret 보관 | Notion token을 브라우저나 GitHub에 노출하지 않기 위해 |
-| **Cloudflare Access** | 앱 로그인과 관리자 이메일 확인 | 개인 Notion을 연결한 앱을 외부 요청으로부터 보호하기 위해 |
-| **GitHub** | 코드 공개, Fork, 변경 이력과 자동 배포 | 누구나 자기 복사본을 만들고 업데이트할 수 있게 하기 위해 |
+| **Notion** | Source data for tracks and events | Lets you inspect and manage your history data in a familiar interface |
+| **Cloudflare Workers** | Runs the app, calls Notion, stores secrets | Keeps the Notion token out of browsers and GitHub |
+| **Cloudflare Access** | Authenticates app visitors and admin email | Protects the app connected to your personal Notion workspace |
+| **GitHub** | Public source, forks, history, and deployments | Lets anyone create and maintain an independent copy |
 
-GitHub Pages만으로는 Notion secret과 서버 API를 안전하게 처리할 수 없습니다. 그래서 GitHub에는 코드를 두고, 무료로 시작할 수 있는 Cloudflare Worker에서 앱을 실행합니다.
+GitHub Pages alone cannot securely hold a Notion token or run the editing APIs. The code therefore lives on GitHub while the full-stack app runs on a Cloudflare Worker.
 
-## 설치 요약
+## Installation overview
 
-처음 설치할 때 필요한 작업은 다음 다섯 단계입니다.
+1. Create `Tracks` and `Timeline Items` databases in Notion.
+2. Create a Notion connection and share both databases with it.
+3. Select **Deploy to Cloudflare** to create your own repository and Worker.
+4. Add the Notion token, both data source IDs, and your admin email as Worker secrets.
+5. Protect all Worker traffic with Cloudflare Access, then open the assigned `*.workers.dev` URL.
 
-1. Notion에 `Tracks`와 `Timeline Items` 데이터베이스를 만듭니다.
-2. Notion Connection을 만들고 두 데이터베이스에 연결합니다.
-3. 위의 **Deploy to Cloudflare** 버튼으로 자기 GitHub 저장소와 Worker를 만듭니다.
-4. Notion token, 두 data source ID, 관리자 이메일을 Cloudflare secret으로 넣습니다.
-5. Cloudflare Access로 Worker 전체를 보호한 뒤 발급된 `*.workers.dev` 주소를 엽니다.
+The detailed steps follow.
 
-아래는 각 단계의 상세 설명입니다.
+## Detailed setup
 
-## 상세 설치
+### 1. Prepare Notion
 
-### 1. Notion 준비
+#### Create a connection
 
-#### Connection 만들기
+1. Create an internal connection from [Notion Connections](https://www.notion.so/profile/integrations).
+2. Use **Access token** authentication for a personal workspace.
+3. Grant **Read content**, **Insert content**, and **Update content** capabilities.
+4. Keep the issued token as `NOTION_API_KEY`.
 
-1. [Notion Connections](https://www.notion.so/profile/integrations)에서 내부 Connection을 만듭니다.
-2. 인증 방식은 개인 워크스페이스용 **Access token**을 선택합니다.
-3. **Read content**, **Insert content**, **Update content** 권한을 허용합니다.
-4. 발급된 token을 보관합니다. 이 값이 `NOTION_API_KEY`입니다.
+#### Create two databases
 
-#### 데이터베이스 두 개 만들기
-
-Notion에 전체 페이지 데이터베이스 두 개를 만들고 이름을 각각 `Tracks`, `Timeline Items`로 지정합니다. 속성 이름은 아래 표와 정확히 같아야 합니다.
+Create two full-page Notion databases named `Tracks` and `Timeline Items`. Property names must match the following tables exactly.
 
 <details>
-<summary><strong>Tracks 속성 펼치기</strong></summary>
+<summary><strong>Tracks properties</strong></summary>
 
-| 속성 | Notion 타입 |
+| Property | Notion type |
 |---|---|
 | `Name` | Title |
 | `Key` | Rich text |
 | `Order` | Number |
 | `Color` | Select |
-| `Parent` | 같은 Tracks 데이터 소스 Relation |
+| `Parent` | Relation to the same Tracks data source |
 | `Visible` | Checkbox |
 | `Description` | Rich text |
 
-`Color`에는 `teal`, `blue`, `amber`, `red`, `purple`, `violet`, `green`, `gray` 또는 CSS 색상 문자열을 사용합니다.
+Use `teal`, `blue`, `amber`, `red`, `purple`, `violet`, `green`, `gray`, or a CSS color string for `Color`.
 
 </details>
 
 <details>
-<summary><strong>Timeline Items 속성 펼치기</strong></summary>
+<summary><strong>Timeline Items properties</strong></summary>
 
-| 속성 | Notion 타입 |
+| Property | Notion type |
 |---|---|
 | `Title` | Title |
 | `Type`, `StartEra`, `EndEra`, `StartPrecision`, `EndPrecision`, `TimeBasis` | Select |
 | `Importance`, `RecordLevel`, `Confidence`, `Status` | Select |
 | `StartYear`, `StartMonth`, `StartDay`, `EndYear`, `EndMonth`, `EndDay` | Number |
-| `Tracks` | Tracks 데이터 소스 Relation |
-| `RelatedItems` | 같은 Timeline Items 데이터 소스 Relation |
+| `Tracks` | Relation to the Tracks data source |
+| `RelatedItems` | Relation to the same Timeline Items data source |
 | `Tags` | Multi-select |
 | `Summary`, `UncertaintyNote`, `Slug`, `ImportFingerprint`, `PlaceName` | Rich text |
 | `Latitude`, `Longitude` | Number |
 | `LocationPrecision` | Select |
 
-기본 연표에는 `Status=Published`인 사건만 나타납니다. `Hidden`은 눈 토글을 켰을 때만 보이고 `Draft`는 연표에 표시되지 않습니다.
+The default timeline includes only `Status=Published`. `Hidden` appears only when the eye toggle is enabled, and `Draft` never appears on the timeline.
 
 </details>
 
-#### Connection과 ID 연결하기
+#### Share the databases and copy IDs
 
-1. 두 데이터베이스 각각에서 `•••` 메뉴를 열고 **Add connections**에서 만든 Connection을 추가합니다.
-2. 데이터베이스 설정의 **Manage data sources**를 엽니다.
-3. 실제 데이터 소스의 `•••` 메뉴에서 **Copy data source ID**를 선택합니다.
-4. Tracks ID와 Timeline Items ID를 따로 보관합니다.
+1. Open each database's `•••` menu and add your connection under **Add connections**.
+2. Open **Manage data sources** in database settings.
+3. Open the data source's `•••` menu and select **Copy data source ID**.
+4. Keep the Tracks and Timeline Items IDs separately.
 
-데이터베이스 URL의 database ID와 data source ID는 서로 다릅니다. 자세한 위치는 [Notion 공식 안내](https://developers.notion.com/reference/retrieve-a-data-source#finding-a-data-source-id)를 참고하세요. Relation으로 연결한 양쪽 데이터베이스 모두 Connection에 공유해야 합니다.
+A database ID from the page URL is not the same as a data source ID. See [Notion's official guide](https://developers.notion.com/reference/retrieve-a-data-source#finding-a-data-source-id). Both sides of every relation must be shared with the connection.
 
-### 2. Cloudflare에 배포
+### 2. Deploy to Cloudflare
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Gie-ok-Hie-ut/kairosia-history-builder)
 
-버튼을 누르면 Cloudflare가 이 저장소를 사용자의 GitHub 계정으로 복사하고 Worker를 빌드합니다. 배포 화면에서 다음 네 값을 입력합니다.
+Cloudflare copies this repository into your GitHub account and builds a Worker. Enter these four values during setup:
 
-| 환경변수 | 값 |
+| Variable | Value |
 |---|---|
-| `NOTION_API_KEY` | Notion Connection token |
+| `NOTION_API_KEY` | Notion connection token |
 | `NOTION_TRACKS_DATA_SOURCE_ID` | Tracks data source ID |
 | `NOTION_ITEMS_DATA_SOURCE_ID` | Timeline Items data source ID |
-| `ADMIN_EMAILS` | 편집을 허용할 이메일. 여러 명이면 쉼표로 구분 |
+| `ADMIN_EMAILS` | Allowed editor email; comma-separate multiple addresses |
 
-이 값들은 GitHub가 아니라 Cloudflare Worker secret으로 저장해야 합니다. `NOTION_WEBHOOK_TOKEN`은 webhook을 사용할 때만 선택적으로 추가합니다.
+Store these values as Cloudflare Worker secrets, never in GitHub. `NOTION_WEBHOOK_TOKEN` is optional and needed only when configuring a webhook.
 
-Cloudflare 계정을 처음 쓴다면 이메일 인증과 `workers.dev` 서브도메인 등록을 요구할 수 있습니다. 안내에 따라 한 번만 설정하면 됩니다.
+A new Cloudflare account may ask you to verify your email and register a `workers.dev` subdomain once.
 
-### 3. Access로 앱 보호
+### 3. Protect the app with Access
 
-개인 Notion을 연결하므로 현재 권장 설정은 **앱 전체를 비공개로 보호**하는 것입니다.
+The recommended setup protects the entire personal app.
 
-1. Cloudflare에서 **Zero Trust Free**를 활성화합니다.
-2. **Workers & Pages → 해당 Worker → Access**로 이동합니다.
-3. **Protect this Worker behind Access**를 누릅니다.
-4. **All traffic**과 **Cloudflare account** 정책을 선택합니다.
-5. Access 로그인 이메일이 `ADMIN_EMAILS`와 정확히 같은지 확인합니다.
+1. Enable the **Zero Trust Free** plan.
+2. Open **Workers & Pages → your Worker → Access**.
+3. Select **Protect this Worker behind Access**.
+4. Choose **All traffic** and the **Cloudflare account** policy.
+5. Make sure the Access email exactly matches `ADMIN_EMAILS`.
 
-Access를 적용하기 전에는 Worker 주소를 공유하지 마세요. Worker 화면에서 Access 탭이 잘리면 상단 `Domains` 오른쪽의 `Ac…` 또는 탭 줄의 화살표를 누르면 됩니다.
+Do not share the Worker URL before Access is enabled.
 
-### 4. 첫 실행 확인
+### 4. Verify the first run
 
-발급된 `https://<worker>.<subdomain>.workers.dev` 주소를 엽니다.
+Open `https://<worker>.<subdomain>.workers.dev`.
 
-1. Cloudflare Access로 로그인됩니다.
-2. 우측 상단 **Notion** 배지를 누르면 연결된 Timeline Items 데이터베이스가 열립니다.
-3. 기존 Notion 사건이 연표에 보이는지 확인합니다.
-4. 테스트 사건 하나를 등록하고 편집·숨김·복원이 Notion에 반영되는지 확인합니다.
+1. Sign in through Cloudflare Access.
+2. Select the **Notion** badge to open the connected Timeline Items database.
+3. Confirm that existing Notion events appear on the timeline.
+4. Register a test event and verify edit, hide, and restore operations in Notion.
 
-## 로컬에서 먼저 실행하기
+## Run locally first
 
-Node.js `>=22.13.0`이 필요합니다.
+Node.js `>=22.13.0` is required.
 
 ```bash
 git clone https://github.com/Gie-ok-Hie-ut/kairosia-history-builder.git
@@ -170,7 +168,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-브라우저에서 [http://localhost:3000](http://localhost:3000)을 엽니다. `.env.local`에 Notion 값을 넣지 않으면 안전한 샘플 데이터로 실행됩니다.
+Open [http://localhost:3000](http://localhost:3000). The app uses safe demo data when Notion values are absent.
 
 ```dotenv
 NOTION_API_KEY=ntn_...
@@ -179,33 +177,33 @@ NOTION_ITEMS_DATA_SOURCE_ID=...
 ADMIN_EMAILS=you@example.com
 ```
 
-직접 Cloudflare에 배포할 때는 다음 명령을 사용합니다.
+For a direct CLI deployment:
 
 ```bash
 npm run deploy:local
 ```
 
-## 자주 막히는 부분
+## Troubleshooting
 
-| 증상 | 확인할 것 |
+| Symptom | Check |
 |---|---|
-| 샘플 데이터만 보임 | Notion secret 세 개가 모두 설정됐는지 확인 |
-| Notion API `404` | 두 원본 데이터베이스를 Connection에 공유했는지, data source ID가 맞는지 확인 |
-| 등록·편집이 `403` | Cloudflare Access 이메일과 `ADMIN_EMAILS`가 같은지 확인 |
-| 사건이 저장됐지만 연표에 없음 | Notion의 `Status`가 `Published`인지 확인 |
-| 지도는 보이지만 Google API key가 없음 | 정상 동작. Leaflet과 OpenStreetMap을 사용하며 위치 링크만 Google Maps로 연결 |
+| Only demo data appears | Confirm all three required Notion secrets are set |
+| Notion API returns `404` | Share both original databases with the connection and verify data source IDs |
+| Import or edit returns `403` | Match the Cloudflare Access email with `ADMIN_EMAILS` |
+| A saved event is missing | Set its Notion `Status` to `Published` |
+| The map works without a Google key | Expected: Leaflet and OpenStreetMap render the map; the location link opens Google Maps |
 
-## 선택 사항
+## Optional core dataset
 
-한국사 시대 골격과 기독교·이스라엘사, 동아시아사, 유럽사, 미국사, 중국사, 철학사, 과학사의 핵심 사건을 넣을 수 있습니다.
+Seed the broad Korean chronology and selected events for Christian and Israel, East Asian, European, American, Chinese, philosophy, and science history:
 
 ```bash
 npm run seed:core
 ```
 
-기존 `일본사` Track은 `동아시아사`로 전환되고, `이스라엘사`는 `기독교·이스라엘사`로 관계가 통합됩니다. 성경사 데이터는 복음주의 개신교의 정경 서사와 전통적 연대를 기준으로 하며, 논쟁적인 연대는 `disputed`로 표시합니다.
+The command migrates an existing `Japanese history` track to `East Asian history` and merges `Israel history` into `Christian and Israel history`. Biblical data follows an evangelical Protestant canonical narrative and traditional chronology. Disputed dates are marked as `disputed`.
 
-## 개발과 검증
+## Development
 
 ```bash
 npm run typecheck
@@ -213,7 +211,7 @@ npm run lint
 npm test
 ```
 
-구현 배경과 세부 설계는 [기획 문서](./BRAIDED_HISTORY_PLAN.md), 실제 JSON 계약은 [`domain/import/schema.ts`](./domain/import/schema.ts)에 있습니다.
+See the [planning document](./BRAIDED_HISTORY_PLAN.md) for design decisions and [`domain/import/schema.ts`](./domain/import/schema.ts) for the JSON contract.
 
 ## License
 
