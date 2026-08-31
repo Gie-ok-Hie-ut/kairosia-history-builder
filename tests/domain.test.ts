@@ -706,6 +706,7 @@ test("explains invalid source URLs with an actionable message", () => {
       formatSchemaIssues(parsed.error).some(
         (issue) =>
           issue.path === "items.0.sources.0.url" &&
+          issue.message.includes("Markdown 링크") &&
           issue.message.includes("https://"),
       ),
     );
@@ -821,6 +822,9 @@ test("builds an AI request with the current event JSON and Track keys", () => {
   assert.match(prompt, /\[JSON 문법\]/);
   assert.match(prompt, /type: event\(사건\)/);
   assert.match(prompt, /기본은 짧고 읽기 쉬운 "간단 기록"/);
+  assert.match(prompt, /\[출처 URL 강제 규칙\]/);
+  assert.match(prompt, /url: null/);
+  assert.match(prompt, /반환 전에 sources의 모든 url을 점검한다/);
   assert.doesNotMatch(prompt, /```/);
 });
 

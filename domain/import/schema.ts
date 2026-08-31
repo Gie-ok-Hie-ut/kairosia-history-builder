@@ -168,7 +168,7 @@ export function formatSchemaIssues(error: z.ZodError) {
       path,
       message:
         path.endsWith(".url") && /invalid url/i.test(issue.message)
-          ? "URL은 https:// 또는 http://로 시작하는 완전한 주소여야 합니다. 확실하지 않으면 null로 두세요."
+          ? "URL에는 Markdown 링크나 대괄호를 넣지 말고, https:// 또는 http://로 시작하는 순수 주소만 입력하세요. 확실하지 않으면 null로 두세요."
           : issue.message,
     };
   });
