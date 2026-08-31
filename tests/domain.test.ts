@@ -3,9 +3,11 @@ import test from "node:test";
 import { createFingerprint } from "../domain/import/fingerprint";
 import { createAiImportPrompt } from "../domain/import/ai-prompt";
 import {
+  formatSchemaIssues,
   importPayloadSchema,
   registrationPayloadSchema,
   type ImportItem,
+  type ImportPayload,
 } from "../domain/import/schema";
 import {
   formatHistoricalRange,
@@ -685,6 +687,29 @@ test("rejects year zero and reversed import ranges", () => {
     importPayloadSchema.safeParse(invalidCalendarDay).success,
     false,
   );
+});
+
+test("explains invalid source URLs with an actionable message", () => {
+  const invalid: ImportPayload = payload();
+  invalid.items[0].sources = [
+    {
+      type: "reference",
+      title: "Example source",
+      url: "www.example.org/article",
+    },
+  ];
+  const parsed = importPayloadSchema.safeParse(invalid);
+
+  assert.equal(parsed.success, false);
+  if (!parsed.success) {
+    assert.ok(
+      formatSchemaIssues(parsed.error).some(
+        (issue) =>
+          issue.path === "items.0.sources.0.url" &&
+          issue.message.includes("https://"),
+      ),
+    );
+  }
 });
 
 test("accepts exactly one item through the event registration contract", () => {

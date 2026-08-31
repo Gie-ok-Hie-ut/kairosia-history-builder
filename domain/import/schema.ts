@@ -162,8 +162,14 @@ export type ImportItem = z.infer<typeof importItemSchema>;
 export type ImportPayload = z.infer<typeof importPayloadSchema>;
 
 export function formatSchemaIssues(error: z.ZodError) {
-  return error.issues.map((issue) => ({
-    path: issue.path.length ? issue.path.join(".") : "root",
-    message: issue.message,
-  }));
+  return error.issues.map((issue) => {
+    const path = issue.path.length ? issue.path.join(".") : "root";
+    return {
+      path,
+      message:
+        path.endsWith(".url") && /invalid url/i.test(issue.message)
+          ? "URL은 https:// 또는 http://로 시작하는 완전한 주소여야 합니다. 확실하지 않으면 null로 두세요."
+          : issue.message,
+    };
+  });
 }

@@ -46,7 +46,9 @@ ${target}
 - detailMarkdown: 간단 기록은 2~4문장으로 쓴다. standard는 상세 설명과 출처 1개 이상, rigorous는 출처 2개 이상이 필요하다.
 - confidence: high, medium, low, disputed 중 하나다. disputed면 uncertaintyNote를 반드시 작성한다.
 - location: 장소가 불명확하면 null이다. 입력하면 name, latitude, longitude, precision(exact 또는 approximate)을 모두 넣는다.
-- sources: 비어 있거나 출처 객체 배열이다. 각 출처에는 type(primary, secondary, reference, web)과 title이 필요하고, url은 실제 확인 가능한 주소만 넣는다.
+- sources: 비어 있거나 출처 객체 배열이다. 각 출처에는 type(primary, secondary, reference, web)과 title이 필요하다. author, publishedYear, url, locator, note는 생략하거나 null로 둘 수 있다.
+- 출처의 url은 실제 확인한 완전한 웹 주소만 사용한다. "https://" 또는 "http://"로 시작해야 하며, 확실하지 않으면 url: null로 둔다.
+- url에는 빈 문자열(""), "www.example.org", "example.org/page", Markdown 링크([제목](주소)), 인용 표기 등을 넣지 않는다. 올바른 형식의 예: "https://www.example.org/article".
 
 [시간 규칙]
 - 정확한 날짜가 확인되면 precision을 "exact"로 하고 month와 day를 입력한다.
