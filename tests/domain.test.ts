@@ -793,6 +793,9 @@ test("builds an AI request with the current event JSON and Track keys", () => {
   assert.match(prompt, /east-asian-history: 동아시아사/);
   assert.match(prompt, /"schemaVersion": "1\.0"/);
   assert.match(prompt, /"title": "메이지 유신"/);
+  assert.match(prompt, /\[JSON 문법\]/);
+  assert.match(prompt, /type: event\(사건\)/);
+  assert.match(prompt, /기본은 짧고 읽기 쉬운 "간단 기록"/);
   assert.doesNotMatch(prompt, /```/);
 });
 
