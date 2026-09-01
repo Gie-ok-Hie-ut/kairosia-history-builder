@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { createAiImportPrompt } from "@/domain/import/ai-prompt";
+import { normalizeImportSourceUrls } from "@/domain/import/url-normalization";
 import {
   formatSchemaIssues,
   registrationPayloadSchema,
@@ -173,8 +174,17 @@ export function ImportPanel({
       return;
     }
 
-    const parsed = queueValidation(nextPayload);
-    if (parsed) setPayload(parsed);
+    const normalized = normalizeImportSourceUrls(nextPayload);
+    const parsed = queueValidation(normalized.value);
+    if (parsed) {
+      setPayload(parsed);
+      if (normalized.normalizedCount > 0) {
+        setJsonText(serializePayload(parsed));
+        setMessage(
+          `출처 URL ${normalized.normalizedCount}개에서 Markdown 링크 표기를 순수 주소로 정리했습니다.`,
+        );
+      }
+    }
   }
 
   async function commit() {

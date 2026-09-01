@@ -53,7 +53,14 @@ ${target}
 - url에 Markdown 링크, 인용 링크, 링크 제목, 대괄호([]), 공백을 넣지 않는다. 특히 "[제목](https://...)"와 "[[https://...](https://...)](...)" 형식은 절대 사용하지 않는다.
 - URL은 문자열의 첫 글자부터 "https://" 또는 "http://"로 시작해야 한다. 주소를 직접 확인하지 못했다면 url: null로 두거나 sources를 빈 배열로 둔다.
 - 출처 객체는 다음 형태를 따른다: { "type": "reference", "title": "출처 제목", "url": "https://www.example.org/article" }.
-- 반환 전에 sources의 모든 url을 점검한다. null이 아닌 url은 https:// 또는 http://로 시작하고, [ 또는 ] 또는 공백을 포함하지 않아야 한다.
+- 아래는 잘못된 예다. { "url": "[국립문서기록관리청](https://www.archives.gov/example)" } 또는 { "url": "[[https://www.example.org](https://www.example.org)](https://www.example.org)" }.
+- 반환 전에 sources의 모든 url을 점검한다. null이 아닌 url은 https:// 또는 http://로 시작하고, [ 또는 ] 또는 공백을 포함하지 않아야 한다. 이 조건을 만족하지 않으면 해당 url을 null로 바꾼다.
+
+[반환 직전 자체 검사]
+1. JSON 전체를 다시 읽어 큰따옴표, 쉼표, 대괄호와 중괄호가 올바른지 확인한다.
+2. items가 정확히 하나인지 확인한다.
+3. sources의 url은 URL만 남겼는지 확인한다. Markdown 링크 문법이 한 글자라도 있으면 url을 null로 둔다.
+4. 최종 답변에는 JSON 객체 외의 어떤 문자도 출력하지 않는다.
 
 [시간 규칙]
 - 정확한 날짜가 확인되면 precision을 "exact"로 하고 month와 day를 입력한다.

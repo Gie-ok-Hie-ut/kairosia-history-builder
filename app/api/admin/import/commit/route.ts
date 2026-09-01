@@ -3,6 +3,7 @@ import {
   formatSchemaIssues,
   registrationPayloadSchema,
 } from "@/domain/import/schema";
+import { normalizeImportSourceUrls } from "@/domain/import/url-normalization";
 import { commitImport } from "@/server/use-cases/commit-import";
 
 export async function POST(request: Request) {
@@ -19,7 +20,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = registrationPayloadSchema.safeParse(input);
+  const normalized = normalizeImportSourceUrls(input);
+  const parsed = registrationPayloadSchema.safeParse(normalized.value);
   if (!parsed.success) {
     return Response.json(
       {

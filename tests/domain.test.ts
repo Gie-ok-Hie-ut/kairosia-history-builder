@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createFingerprint } from "../domain/import/fingerprint";
 import { createAiImportPrompt } from "../domain/import/ai-prompt";
+import { normalizeImportSourceUrls } from "../domain/import/url-normalization";
 import {
   formatSchemaIssues,
   importPayloadSchema,
@@ -711,6 +712,43 @@ test("explains invalid source URLs with an actionable message", () => {
       ),
     );
   }
+});
+
+test("normalizes unambiguous Markdown-wrapped source URLs", () => {
+  const current: ImportPayload = payload();
+  current.items[0].sources = [
+    {
+      type: "reference",
+      title: "National Archives",
+      url: "[[https://www.archives.gov/space](https://www.archives.gov/space)](https://www.archives.gov/space)",
+    },
+  ];
+
+  const normalized = normalizeImportSourceUrls(current);
+  assert.equal(normalized.normalizedCount, 1);
+  assert.equal(
+    (normalized.value as ImportPayload).items[0].sources[0].url,
+    "https://www.archives.gov/space",
+  );
+  assert.ok(registrationPayloadSchema.safeParse(normalized.value).success);
+});
+
+test("does not normalize ambiguous Markdown-wrapped source URLs", () => {
+  const current: ImportPayload = payload();
+  current.items[0].sources = [
+    {
+      type: "reference",
+      title: "Conflicting links",
+      url: "[source](https://one.example.org) and [mirror](https://two.example.org)",
+    },
+  ];
+
+  const normalized = normalizeImportSourceUrls(current);
+  assert.equal(normalized.normalizedCount, 0);
+  assert.equal(
+    (normalized.value as ImportPayload).items[0].sources[0].url,
+    current.items[0].sources[0].url,
+  );
 });
 
 test("accepts exactly one item through the event registration contract", () => {
